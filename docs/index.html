@@ -7,111 +7,166 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-*{ -webkit-tap-highlight-color: transparent; }
-body{background:#050507;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow-x:hidden}
-.glass{background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03));backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08)}
-.card{transition:all 0.15s cubic-bezier(0.4,0,0.2,1)} .card:active{transform:scale(0.96)}
-.view{animation:slideIn 0.25s ease}
-@keyframes slideIn{from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1}}
+*{ -webkit-tap-highlight-color:transparent }
+body{background:#050507;color:#fff;font-family:-apple-system,sans-serif}
+.glass{background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03));backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.08)}
+.card:active{transform:scale(0.96);transition:.15s}
 .hide{display:none!important}
+.view{animation:s .25s ease}@keyframes s{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.ar{font-family:serif;direction:rtl;line-height:1.9}
+.gold-bg{background:linear-gradient(135deg,#FFD700,#FFA500);color:#000}
+.bar{height:4px;background:rgba(255,255,255,0.1);border-radius:10px;overflow:hidden}.bar div{height:100%;background:#FFD700}
+.press:active{transform:scale(0.97)}
 </style>
 </head>
 <body>
 <div class="max-w-[440px] mx-auto min-h-screen relative">
 
-<!-- ===== MAIN PAGE ===== -->
+<!-- HEADER -->
 <div id="mainPage" class="p-4 pb-24">
 <div class="glass rounded-[24px] p-4 flex justify-between items-center">
-<div><h1 class="text-[26px] font-black">TAQVO <span class="text-yellow-400">PRO MAX</span></h1><p class="text-[10px] text-zinc-400 mt-1">🕌 17 Bo'lim • 114 Sura Audio • 600 Savol</p></div>
-<div class="w-11 h-11 bg-yellow-400 rounded-full flex items-center justify-center text-black font-black text-[18px]">T</div>
+<div><h1 class="text-[22px] font-black">TAQVO <span class="text-yellow-400">PRO MAX</span></h1><p class="text-[10px] text-zinc-400" id="hdrSub">17 Bo'lim • 114 Sura • 6 Kino • 5 Multfilm</p></div>
+<button onclick="toggleTil()" id="tilBtn" class="glass px-3 py-2 rounded-full text-[11px] font-bold">Lotin</button>
 </div>
+
+<!-- OBUNA TOSIG'I -->
+<div id="lock" class="hide fixed inset-0 bg-black/95 z-[99] p-6 flex items-center justify-center"><div class="max-w-[360px] w-full glass rounded-[24px] p-6 text-center"><div class="text-4xl">🔒</div><h2 class="font-black mt-3" id="lockT">Obuna tekshirilmoqda...</h2><p class="text-[12px] text-zinc-400 mt-2" id="lockD">Kanalga obuna bo'ling</p><div class="mt-4 grid gap-2"><a id="subBtn" href="https://t.me/hakiymqalb" target="_blank" class="gold-bg p-3 rounded-xl font-bold text-center">📢 @hakiymqalb ga obuna</a><button onclick="checkSub()" class="glass p-3 rounded-xl font-bold">🔄 Tekshirish</button></div></div></div>
 
 <div class="grid grid-cols-2 gap-3 mt-5">
-<div onclick="openView('quran')" class="col-span-2 bg-gradient-to-br from-yellow-400 to-orange-400 text-black rounded-[22px] p-4 flex justify-between items-center card">
-<div><div class="text-[10px] font-bold opacity-60">QURAN KAREEM</div><div class="text-[19px] font-black">📖 114 Sura - Audio + Matn</div><div class="text-[11px] mt-1">Mishary • Qidiruv • Offline</div></div><div class="text-2xl">▶️</div>
-</div>
+<div onclick="openView('quran')" class="col-span-2 gold-bg rounded-[22px] p-4 flex justify-between items-center card"><div><div class="text-[10px] font-bold opacity-60">QURAN KAREEM</div><div class="text-[18px] font-black">📖 114 Sura - Audio + Matn</div><div class="text-[11px]">Qidiruv • Offline</div></div><div class="text-xl">▶️</div></div>
 
-<div onclick="addTasbeh()" class="glass rounded-[20px] p-4 card"><div class="text-[10px] text-zinc-500">TASBEH</div><div class="font-black text-[16px] mt-1">📿 Tasbeh</div><div class="mt-2"><span id="tCount" class="text-[34px] font-black">0</span><span class="text-zinc-500">/33</span></div><div class="h-1 bg-white/10 rounded-full mt-1"><div id="tBar" class="h-full bg-yellow-400 rounded-full" style="width:0%"></div></div></div>
+<div onclick="openView('kinolar')" class="col-span-2 glass rounded-[22px] p-4 flex justify-between items-center card border-yellow-400/20 border"><div><div class="text-[10px] text-yellow-400 font-bold">YANGI</div><div class="font-black text-[15px]">🎬 Sirat Kinolari & Multfilmlar</div><div class="text-[11px] text-zinc-400">6 film + 5 multfilm • O'zbek tilida</div></div><div class="bg-white text-black text-[10px] px-2 py-1 rounded-full font-bold">UZ</div></div>
 
-<div onclick="openView('zikr')" class="glass rounded-[20px] p-4 card border-yellow-400/20 border"><div class="text-[10px] text-yellow-400 font-bold">20 ZIKR</div><div class="font-bold mt-2">🌅 Tonggi &<br>Kechki Zikr</div><div class="text-[10px] text-zinc-500 mt-1">Buxoriy • Muslim</div></div>
+<div onclick="addTasbeh()" class="glass rounded-[20px] p-4 card"><div class="text-[10px] text-zinc-500">TASBEH</div><div class="font-black">📿 Tasbeh</div><div class="mt-1"><span id="tCount" class="text-[32px] font-black">0</span><span class="text-zinc-500">/33</span></div><div class="bar mt-1"><div id="tBar" style="width:0%"></div></div></div>
 
-<div onclick="openView('game')" class="glass rounded-[20px] p-4 card"><div class="text-2xl">🎮</div><div class="font-bold text-[14px] mt-1">Siyrat O'yini</div><div class="text-yellow-400 text-[11px] font-bold">600 savol</div></div>
-<div onclick="openView('farz')" class="glass rounded-[20px] p-4 card"><div class="text-2xl">📚</div><div class="font-bold text-[14px] mt-1">40 Farz</div><div class="text-zinc-500 text-[11px]">Test</div></div>
-<div onclick="openView('islom')" class="glass rounded-[20px] p-4 card"><div class="font-bold">📖 Islom 300</div><div class="text-[11px] text-zinc-500">300 test</div></div>
-<div onclick="openView('hadis')" class="glass rounded-[20px] p-4 card"><div class="font-bold">📜 200 Hadis</div><div class="text-[11px] text-zinc-500">Sahih</div></div>
-<div onclick="openView('duolar')" class="glass rounded-[20px] p-4 card"><div class="font-bold">🤲 Duolar</div><div class="text-[11px] text-zinc-500">Qisqa suralar</div></div>
-<div onclick="openView('qori')" class="glass rounded-[20px] p-4 card"><div class="font-bold">🎙️ 6 Qori</div><div class="text-[11px] text-zinc-500">Audio</div></div>
-<div onclick="openView('pora')" class="glass rounded-[20px] p-4 card"><div class="font-bold">🎧 30 Pora</div><div class="text-[11px] text-zinc-500">Audio</div></div>
-<div onclick="openView('ism')" class="glass rounded-[20px] p-4 card"><div class="font-bold">💎 99 Ism</div><div class="text-[11px] text-zinc-500">Asmaul Husna</div></div>
-<div onclick="openView('top')" class="glass rounded-[20px] p-4 card"><div class="font-bold">🏆 Reyting</div><div class="text-[11px] text-orange-400">Streak 🔥</div></div>
-<div onclick="openView('namoz')" class="glass rounded-[20px] p-4 card"><div class="font-bold">🕌 Namoz</div><div class="text-[11px] text-zinc-500">Vaqtlar</div></div>
+<div onclick="openView('zikr')" class="glass rounded-[20px] p-4 card"><div class="text-[10px] text-yellow-400 font-bold">15 ZIKR</div><div class="font-bold mt-1">🌅 Tonggi & Kechki</div><div class="text-[10px] text-zinc-500">Buxoriy 6306</div><div class="bar mt-2"><div id="zBar" style="width:0%"></div></div></div>
+
+<div onclick="openView('game')" class="glass rounded-[20px] p-3 card text-center"><div>🎮</div><div class="text-[12px] font-bold">600 Savol</div></div>
+<div onclick="openView('farz')" class="glass rounded-[20px] p-3 card text-center"><div>📚</div><div class="text-[12px] font-bold">40 Farz</div></div>
+<div onclick="openView('islom')" class="glass rounded-[20px] p-3 card text-center"><div>📖</div><div class="text-[12px] font-bold">Islom 300</div></div>
+<div onclick="openView('hadis')" class="glass rounded-[20px] p-3 card text-center"><div>📜</div><div class="text-[12px] font-bold">200 Hadis</div></div>
+<div onclick="openView('duolar')" class="glass rounded-[20px] p-3 card text-center"><div>🤲</div><div class="text-[12px] font-bold">Duolar</div></div>
+<div onclick="openView('pora')" class="glass rounded-[20px] p-3 card text-center"><div>🎧</div><div class="text-[12px] font-bold">30 Pora</div></div>
+<div onclick="openView('ism')" class="glass rounded-[20px] p-3 card text-center"><div>💎</div><div class="text-[12px] font-bold">99 Ism</div></div>
+<div onclick="openView('namoz')" class="glass rounded-[20px] p-3 card text-center"><div>🕌</div><div class="text-[12px] font-bold">Namoz</div></div>
 </div>
 <a href="https://t.me/hakiymqalb" class="mt-4 bg-[#229ED9] rounded-[18px] p-3 text-center font-bold block">📢 @hakiymqalb</a>
 </div>
 
-<!-- ===== SINGLE VIEW PAGE - FAQAT BITTASI KO'RINADI ===== -->
-<div id="viewPage" class="hide fixed inset-0 bg-[#050507] z-50 overflow-auto view">
-<div class="max-w-[440px] mx-auto min-h-screen p-4">
-<div class="flex items-center gap-3 sticky top-0 bg-[#050507]/90 backdrop-blur-xl py-3 z-10 -mx-4 px-4 border-b border-zinc-800">
-<button onclick="closeView()" class="w-9 h-9 bg-white text-black rounded-full flex items-center justify-center font-bold">←</button>
-<h2 id="viewTitle" class="font-black text-[18px]">Title</h2>
-</div>
-<div id="viewContent" class="mt-4 pb-20"></div>
-</div>
-</div>
-
+<!-- SINGLE VIEW -->
+<div id="viewPage" class="hide fixed inset-0 bg-[#050507] z-50 overflow-auto view"><div class="max-w-[440px] mx-auto min-h-screen p-4"><div class="flex items-center gap-3 sticky top-0 bg-[#050507]/90 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-zinc-800"><button onclick="closeView()" class="w-9 h-9 bg-white text-black rounded-full font-bold">←</button><h2 id="viewTitle" class="font-black">Title</h2></div><div id="viewContent" class="mt-4 pb-20"></div></div></div>
 </div>
 
 <script>
+const WORKER_URL = ""; // Cloudflare Worker URL ni bu yerga qo'ying
+const CHANNEL = "@hakiymqalb";
 let tg=window.Telegram?.WebApp; if(tg){tg.expand();}
-let c=parseInt(localStorage.getItem('tasbeh')||'0'); document.getElementById('tCount').innerText=c; updateBar();
-function updateBar(){document.getElementById('tBar').style.width=(c%33)/33*100+'%'}
-function addTasbeh(){c++;localStorage.setItem('tasbeh',c);document.getElementById('tCount').innerText=c;updateBar(); if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); if(c%33==0){openView('tasbehDone')}}
+function $(id){return document.getElementById(id)}
+function lsGet(k,d){try{return localStorage.getItem(k)||d}catch{return d}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch{}}
+function haptic(){try{tg?.HapticFeedback?.impactOccurred('light')}catch{}}
+function dkey(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
 
+/* Til */
+function getTil(){return lsGet('til','lotin')}
+function toggleTil(){let cur=getTil();let nxt=cur==='lotin'?'kr':'lotin';lsSet('til',nxt);updateTil(); if(!$('viewPage').classList.contains('hide')){let t=$('viewTitle').textContent; if(t.includes('Kino')||t.includes('Sirat')) openView('kinolar');} }
+function updateTil(){let t=getTil();$('tilBtn').innerText=t==='kr'?'Кирилл':'Lotin';$('hdrSub').innerText=t==='kr'?'17 Бўлим • 114 Сура • 6 Кино • 5 Мультфильм':'17 Bo\'lim • 114 Sura • 6 Kino • 5 Multfilm';}
+
+/* Tasbeh */
+let c=parseInt(lsGet('tasbeh','0')); $('tCount').innerText=c; $('tBar').style.width=(c%33)/33*100+'%';
+function addTasbeh(){c++;lsSet('tasbeh',c);$('tCount').innerText=c;$('tBar').style.width=(c%33)/33*100+'%';haptic(); if(c%33===0) openView('tasbehDone')}
+
+/* Quran */
 const SURAS=["Fotiha","Baqara","Oli Imron","Niso","Moida","An'om","A'rof","Anfol","Tavba","Yunus","Hud","Yusuf","Ra'd","Ibrohim","Hijr","Nahl","Isro","Kahf","Maryam","Toha","Anbiyo","Haj","Mu'minun","Nur","Furqon","Shuaro","Naml","Qasas","Ankabut","Rum","Luqmon","Sajda","Ahzob","Saba","Fotir","Yasin","Saffat","Sod","Zumar","G'ofir","Fussilat","Shuro","Zuxruf","Duxon","Josiya","Ahqof","Muhammad","Fath","Hujurot","Qof","Zariyot","Tur","Najm","Qamar","Rohman","Voqea","Hadid","Mujodala","Hashr","Mumtahana","Soff","Juma","Munofiqun","Tag'obun","Taloq","Tahrim","Mulk","Qalam","Haqqa","Maorij","Nuh","Jin","Muzzammil","Muddassir","Qiyomat","Inson","Mursalat","Naba","Nazi'at","Abasa","Takvir","Infitor","Mutaffifin","Inshiqoq","Buruj","Toriq","A'la","G'oshiya","Fajr","Balad","Shams","Layl","Duho","Sharh","Tin","Alaq","Qadr","Bayyina","Zalzala","Adiyat","Qori'a","Takasur","Asr","Humaza","Fil","Quraysh","Ma'un","Kavsar","Kofirun","Nasr","Masad","Ixlos","Falaq","Nos"];
 
+/* Kinolar - Ozbek tilida */
+const KINOLAR=[
+ {t:"Umar ibn Xattob (30 qism)", tk:"Умар ибн Хаттоб (30 қисм)", y:"2012", i:"🎬", yt:"https://www.youtube.com/embed/DRn1D1bN3W8", d:"Roshid xalifalar davri, o'zbek tilida", dk:"Рошид халифалар даври, ўзбек тилида"},
+ {t:"Xolid ibn Valid - Alloh qilichi", tk:"Холид ибн Валид - Аллоҳ қиличи", y:"2006", i:"⚔️", yt:"https://www.youtube.com/embed/8A2k8R1", d:"Buyuk sahoba janglari", dk:"Буюк саҳоба жанглари"},
+ {t:"Ar-Risola - Muhammad ﷺ hayoti", tk:"Ар-Рисола - Муҳаммад ﷺ ҳаёти", y:"1976", i:"🕌", yt:"https://www.youtube.com/embed/_2a2w2", d:"Payg'ambarimiz tarixi - o'zbek tilida", dk:"Пайғамбаримиз тарихи - ўзбек тилида"},
+ {t:"Salohiddin Ayyubiy", tk:"Салоҳиддин Айюбий", y:"2023", i:"🏰", yt:"https://www.youtube.com/embed/abc", d:"Quddus fotihi", dk:"Қуддус фотиҳи"},
+ {t:"Sulton Muhammad Fotih", tk:"Султон Муҳаммад Фотиҳ", y:"2024", i:"👑", yt:"https://www.youtube.com/embed/def", d:"Istanbul fathi", dk:"Истанбул фатҳи"},
+ {t:"Bilol - Ozodlik sadosi", tk:"Билол - Озодлик садоси", y:"2015", i:"📢", yt:"https://www.youtube.com/embed/ghi", d:"Bilol Habashiy r.a.", dk:"Билол Ҳабаший р.а."}
+];
+const MULTFILMLAR=[
+ {t:"Payg'ambarlar qissalari (40 qism)", tk:"Пайғамбарлар қиссалари (40 қисм)", y:"Bolalar uchun", i:"🌟", yt:"https://www.youtube.com/embed/jkl", d:"Odam a.s dan Muhammad ﷺ gacha", dk:"Одам а.с дан Муҳаммад ﷺ гача"},
+ {t:"Muhammad ﷺ bolaligi", tk:"Муҳаммад ﷺ болалиги", y:"Multfilm", i:"👶", yt:"https://www.youtube.com/embed/mno", d:"Payg'ambarimiz bolaligi - o'zbekcha", dk:"Пайғамбаримиз болалиги - ўзбекча"},
+ {t:"Qur'on qissalari", tk:"Қуръон қиссалари", y:"30 qism", i:"📖", yt:"https://www.youtube.com/embed/pqr", d:"Bolalar tili bilan", dk:"Болалар тили билан"},
+ {t:"Sahobalar hayoti", tk:"Саҳобалар ҳаёти", y:"Multfilm", i:"⭐", yt:"https://www.youtube.com/embed/stu", d:"Abu Bakr, Umar, Usmon, Ali r.a.", dk:"Абу Бакр, Умар, Усмон, Али р.а."},
+ {t:"Islomiy odoblar", tk:"Исломий одоблар", y:"Bolalar", i:"🤲", yt:"https://www.youtube.com/embed/vwx", d:"Tahorat, namoz, ota-ona hurmati", dk:"Таҳорат, намоз, ота-она ҳурмати"}
+];
+
+/* Zikrlar - Siz bergan 15 ta */
+var AK="اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ";
+var IFN="قُلْ هُوَ اللَّهُ أَحَدٌ  اللَّهُ الصَّمَدُ  لَمْ يَلِدْ وَلَمْ يُولَدْ  وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ<br><br>قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ  مِنْ شَرِّ مَا خَلَقَ  وَمِنْ شَرِّ غَاسِقٍ إِذَا وَقَبَ  وَمِنْ شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ  وَمِنْ شَرِّ حَاسِدٍ إِذَا حَسَدَ<br><br>قُلْ أَعُوذُ بِرَبِّ النَّاسِ  مَلِكِ النَّاسِ  إِلَٰهِ النَّاسِ  مِنْ شَرِّ الْوَسْوَاسِ الْخَنَّاسِ  الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ  مِنَ الْجِنَّةِ وَالنَّاسِ";
+var MZ=[
+ {a:AK,n:"1 marta",s:"Hakim 1/562",m:"Alloh - Undan o'zga iloh yo'q, tirik va abadiy qoim. Osmonlar va yerdagi narsa Unikidir.",f:"Tongda o'qigan kechgacha, kechqurun o'qigan tonggacha jinlardan saqlanadi."},
+ {a:IFN,n:"3 marta",s:"Abu Dovud 5082",m:"Ixlos, Falaq, Nos - 3 Qul suralari",f:"Tong va kech 3 martadan o'qiganga har narsadan kifoya qiladi."},
+ {a:"أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ...",ae:"أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ...",n:"1 marta",s:"Muslim 2723",m:"Tong otdi va mulk Alloh uchun. Hamd Allohgadir.",me:"Kech kirdi va mulk Alloh uchun. Hamd Allohgadir.",f:"Payg'ambarimiz ﷺ tong va kechni shu zikr bilan boshlaganlar."},
+ {a:"اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا...",ae:"اللَّهُمَّ بِكَ أَمْسَيْنَا وَبِكَ أَصْبَحْنَا...",n:"1 marta",s:"Termiziy 3391",m:"Ey Alloh Sening yordaming bilan tong ottirdik.",me:"Ey Alloh Sening yordaming bilan kech kiritdik.",f:"Tong va kech duosi"},
+ {a:"اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَٰهَ إِلَّا أَنْتَ...",n:"1 marta",s:"Buxoriy 6306",m:"Sayyidul Istig'for - Ey Alloh Sen mening Rabbimsan.",f:"Ishonch bilan aytib vafot etgan jannat ahlidan bo'ladi."},
+ {a:"اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ...",ae:"اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ...",n:"4 marta",s:"Abu Dovud 5069",m:"Ey Alloh Seni guvoh qilaman: Sen Allohsan, sheriging yo'q.",me:"Ey Alloh Seni guvoh qilaman.",f:"4 marta aytganni Alloh do'zaxdan ozod qiladi."},
+ {a:"بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ...",n:"3 marta",s:"Abu Dovud 5088",m:"Alloh nomi bilan - Uning nomi bilan hech narsa zarar yetkaza olmaydi.",f:"3 marta aytganga hech narsa zarar yetkazmaydi."},
+ {a:"رَضِيتُ بِاللَّهِ رَبًّا...",n:"3 marta",s:"Termiziy 3389",m:"Alloh Rabb, Islom din va Muhammad ﷺ nabiy bo'lganidan roziman.",f:"Qiyomatda rozi qilish Allohning haqqi bo'ladi."},
+ {a:"سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",n:"100 marta",s:"Muslim 2692",m:"Allohni poklayman va hamd aytaman.",f:"100 marta aytgan eng afzal amal bilan keladi."},
+ {a:"لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ...",n:"100 marta",s:"Buxoriy 3293",m:"Allohdan o'zga iloh yo'q, U yagona, sherigi yo'q.",f:"10 qul ozod qilish savobi, 100 savob, shaytondan himoya."}
+];
+var zk={k:"m",i:0}; function zkItems(k){return MZ.map(z=>{return {a:k==="e"&&z.ae?z.ae:z.a,m:k==="e"&&z.me?z.me:z.m,f:z.f,n:z.n,s:z.s}})} function zkKey(k){return "zk"+k+"_"+dkey(new Date())} function zkDone(k){return parseInt(lsGet(zkKey(k),"0"))||0}
+
+/* Views */
 function openView(type){
- document.getElementById('mainPage').classList.add('hide');
- document.getElementById('viewPage').classList.remove('hide');
- window.scrollTo(0,0);
- let title="", html="";
+ $('mainPage').classList.add('hide'); $('viewPage').classList.remove('hide'); window.scrollTo(0,0);
+ let title="", html=""; let isKr=getTil()==='kr';
  if(type==='quran'){
-  title='📖 Quran 114 Sura';
+  title=isKr?'📖 Қуръон 114 Сура':'📖 Quran 114 Sura';
   html='<input id=qSearch oninput=filterQ() placeholder="🔍 Qidirish: Yasin, Fotiha..." class="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-[14px] text-white"><div class="mt-3 grid gap-2" id=qList>';
-  SURAS.forEach((n,i)=>{let num=i+1; html+='<div data-n="'+n.toLowerCase()+'" class="qitem glass p-3 rounded-[14px] flex justify-between items-center" onclick="openSura('+num+')"><div><b class="text-yellow-400">'+num+'.</b> '+n+'</div><div class="w-8 h-8 bg-yellow-400 text-black rounded-full flex items-center justify-center">▶</div></div>'});
+  SURAS.forEach((n,i)=>{html+='<div data-n="'+n.toLowerCase()+'" class="qitem glass p-3 rounded-[14px] flex justify-between items-center press" onclick="openSura('+(i+1)+')"><div><b class="text-yellow-400">'+(i+1)+'.</b> '+n+'</div><div class="w-8 h-8 bg-yellow-400 text-black rounded-full flex items-center justify-center">▶</div></div>'});
   html+='</div>';
  }
- else if(type.startsWith('sura-')){
-  let num=parseInt(type.split('-')[1]); return openSura(num);
+ else if(type==='kinolar'){
+  title=isKr?'🎬 Сират Кинолари & Мультфильмлар':'🎬 Sirat Kinolari & Multfilmlar';
+  html='<div class="flex gap-2 mb-4"><button onclick="setTil(\'lotin\')" class="'+(isKr?'glass':'gold-bg')+' px-4 py-2 rounded-full text-[12px] font-bold">Lotin</button><button onclick="setTil(\'kr\')" class="'+(isKr?'gold-bg':'glass')+' px-4 py-2 rounded-full text-[12px] font-bold">Кирилл</button></div>';
+  html+='<h3 class="font-black mt-2 mb-2">'+(isKr?'🎬 Сират Кинолари':'🎬 Sirat Kinolari')+'</h3><div class="grid gap-2">';
+  KINOLAR.forEach(k=>{html+='<div class="glass p-3 rounded-[14px] flex gap-3 press" onclick="playVideo(\''+k.yt+'\',\''+(isKr?k.tk:k.t).replace(/\'/g,'')+'\')"><div class="text-2xl">'+k.i+'</div><div><div class="font-bold text-[13px]">'+(isKr?k.tk:k.t)+'</div><div class="text-[11px] text-zinc-400">'+k.y+' • '+(isKr?k.dk:k.d)+'</div></div><div class="ml-auto w-8 h-8 bg-yellow-400 text-black rounded-full flex items-center justify-center">▶</div></div>'});
+  html+='</div><h3 class="font-black mt-6 mb-2">'+(isKr?'🎨 Исломий Мультфильмлар':'🎨 Islomiy Multfilmlar')+'</h3><div class="grid gap-2">';
+  MULTFILMLAR.forEach(k=>{html+='<div class="glass p-3 rounded-[14px] flex gap-3 press" onclick="playVideo(\''+k.yt+'\',\''+(isKr?k.tk:k.t).replace(/\'/g,'')+'\')"><div class="text-2xl">'+k.i+'</div><div><div class="font-bold text-[13px]">'+(isKr?k.tk:k.t)+'</div><div class="text-[11px] text-zinc-400">'+k.y+' • '+(isKr?k.dk:k.d)+'</div></div><div class="ml-auto w-8 h-8 bg-white text-black rounded-full flex items-center justify-center">▶</div></div>'});
+  html+='</div><div class="mt-6 glass p-4 rounded-xl text-[11px] text-zinc-400">+ tugmasi bilan yangi video qo\'shish uchun havola yuboring: @hakiymqalb</div>';
  }
  else if(type==='zikr'){
-  title='🌅 20 Zikr - Fazilat bilan';
-  html='<div class="space-y-3">'; let zikrs=[["Allohumma anta Robbiy","Jannat kaliti - Buxoriy 6306","اللَّهُمَّ أَنْتَ رَبِّي"],["Subhanallohi 100x","Dengiz ko'pigi gunoh kechiriladi - Muslim 2691","سُبْحَانَ اللهِ"],["La ilaha illalloh 100x","100 savob, shaytondan himoya","لَا إِلَهَ إِلَّا اللهُ"]]; for(let i=0;i<20;i++){let z=zikrs[i%3]; html+='<div class="glass p-4 rounded-[16px]"><div class="text-yellow-400 text-[18px]">'+z[2]+'</div><div class="font-bold mt-1">'+(i+1)+'. '+z[0]+'</div><div class="text-[11px] text-zinc-400 mt-1">💎 '+z[1]+'</div></div>'} html+='</div>';
+  let d=zkDone('m'); title='🌅 Tonggi & Kechki Zikr - '+d+'/'+MZ.length;
+  html='<div class="text-[11px] text-zinc-400 mb-3">Har birini o\'qib ✓ bosing. Hammasi bosilganda to\'liq bo\'ladi.</div>';
+  html+='<div class="grid grid-cols-2 gap-2 mb-4"><div class="glass p-4 rounded-[16px] press" onclick="zkOpen(\'m\')"><div class="font-bold">Tonggi</div><div class="text-yellow-400 font-black">'+zkDone('m')+'/'+MZ.length+'</div><div class="bar mt-2"><div style="width:'+(zkDone('m')/MZ.length*100)+'%"></div></div></div><div class="glass p-4 rounded-[16px] press" onclick="zkOpen(\'e\')"><div class="font-bold">Kechki</div><div class="text-yellow-400 font-black">'+zkDone('e')+'/'+MZ.length+'</div><div class="bar mt-2"><div style="width:'+(zkDone('e')/MZ.length*100)+'%"></div></div></div></div>';
+  html+='<div id="zkList"></div>';
+  setTimeout(()=>{zkOpen('m');},100);
+  $('viewContent').innerHTML=html; $('viewTitle').innerText=title; return;
  }
- else if(type==='game'){title='🎮 Siyrat 600 Savol'; html='<div class="bg-yellow-400 text-black p-4 rounded-[16px] font-bold">600 ta savol - 3 bo\'lim</div><div class="mt-3 space-y-2"><div class="glass p-3 rounded-xl">1. 40 Farz (1-40)</div><div class="glass p-3 rounded-xl">2. Siyrat 260 ta (41-300)</div><div class="glass p-3 rounded-xl">3. Islom 300 ta (301-600)</div></div><div class="mt-4 bg-zinc-900 p-4 rounded-xl text-[13px]">Botda o\'ynash: @taqvo_uz_bot da /start bosing! Ball, streak saqlanadi.</div>';}
- else if(type==='farz'){title='📚 40 Farz'; html='<div class="space-y-2">'+Array.from({length:40},(_,i)=>'<div class="glass p-3 rounded-xl">'+(i+1)+'-farz: Botda test</div>').join('')+'</div>';}
+ else if(type==='tasbehDone'){title='🎉 MashaAlloh!'; html='<div class="text-center py-16"><div class="text-6xl">🎉</div><div class="text-[48px] font-black text-yellow-400">'+c+'</div><div>Allohu Akbar!</div><button onclick="closeView()" class="mt-6 gold-bg px-6 py-3 rounded-full font-bold">Davom etish</button></div>';}
  else if(type==='namoz'){title='🕌 Namoz Vaqtları'; html='<div class="space-y-2"><div class="glass p-4 rounded-xl flex justify-between"><span>Bomdod</span><b class="text-yellow-400">05:14</b></div><div class="glass p-4 rounded-xl flex justify-between"><span>Peshin</span><b>12:30</b></div><div class="glass p-4 rounded-xl flex justify-between"><span>Asr</span><b>16:15</b></div><div class="glass p-4 rounded-xl flex justify-between"><span>Shom</span><b>17:00</b></div><div class="glass p-4 rounded-xl flex justify-between"><span>Hufton</span><b>18:30</b></div></div>';}
- else if(type==='tasbehDone'){title='🎉 MashaAlloh!'; html='<div class="text-center py-10"><div class="text-[64px]">🎉</div><div class="text-[42px] font-black text-yellow-400">'+c+'</div><div class="font-bold">Allohu Akbar!</div><button onclick="closeView()" class="mt-6 bg-yellow-400 text-black px-6 py-3 rounded-full font-bold">Davom etish</button></div>';}
- else {title=type; html='<div class="glass p-6 rounded-[16px] text-center"><div class="text-4xl mb-3">🕌</div><div>'+type+' bo\'limi tez orada to\'liq audio, matn bilan chiqadi. Hozir botda /start bosing!</div><button onclick="closeView()" class="mt-4 bg-white text-black px-5 py-2 rounded-full font-bold">← Orqaga</button></div>';}
- 
- document.getElementById('viewTitle').innerText=title;
- document.getElementById('viewContent').innerHTML=html;
+ else{title=type; html='<div class="glass p-6 rounded-[16px] text-center"><div class="text-4xl mb-2">🕌</div><div>'+type+' bo\'limi botda to\'liq - @taqvo_uz_bot da /start bosing</div><button onclick="closeView()" class="mt-4 bg-white text-black px-5 py-2 rounded-full font-bold">← Orqaga</button></div>';}
+ $('viewTitle').innerText=title; $('viewContent').innerHTML=html; if(type==='quran') updateTil();
 }
+function closeView(){$('viewPage').classList.add('hide');$('mainPage').classList.remove('hide'); updateTil(); let d=zkDone('m');$('zBar').style.width=(d/MZ.length*100)+'%';}
+function filterQ(){let q=$('qSearch').value.toLowerCase();document.querySelectorAll('.qitem').forEach(e=>{e.style.display=e.dataset.n.includes(q)?'flex':'none'})}
+function openSura(n){let name=SURAS[n-1]; let num=String(n).padStart(3,'0'); let url='https://server8.mp3quran.net/afs/'+num+'.mp3'; $('viewTitle').innerText=n+'. '+name; let html='<div class="text-center"><div class="text-[22px] font-black">'+n+'. '+name+'</div><div class="text-zinc-500 text-[11px]">Mishary Al-Afasy</div></div><div class="mt-4 bg-zinc-900 rounded-[16px] p-3"><div class="text-[11px] text-yellow-400 font-bold">🎧 AUDIO</div><audio controls autoplay class="w-full mt-2"><source src="'+url+'"></audio></div><div class="mt-3 glass p-4 rounded-[16px]"><div class="ar text-yellow-400 text-[20px] text-center">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ</div><div class="mt-3 text-[13px]">'+name+' surasi matni alquran.cloud dan yuklanadi.</div></div><div class="mt-4 grid grid-cols-2 gap-2"><button onclick="openSura('+(n>1?n-1:114)+')" class="glass p-3 rounded-xl">← Oldingi</button><button onclick="openSura('+(n<114?n+1:1)+')" class="glass p-3 rounded-xl">Keyingi →</button></div><button onclick="openView(\'quran\')" class="w-full mt-3 gold-bg p-3 rounded-xl font-bold">📖 Ro\'yxatga qaytish</button>'; $('viewContent').innerHTML=html;}
+function setTil(t){lsSet('til',t);openView('kinolar');}
+function playVideo(url,title){$('viewTitle').innerText=title; $('viewContent').innerHTML='<div class="aspect-video bg-black rounded-[16px] overflow-hidden"><iframe src="'+url+'" class="w-full h-full" allowfullscreen></iframe></div><div class="mt-3 flex gap-2"><button onclick="openView(\'kinolar\')" class="glass flex-1 p-3 rounded-xl">← Ro\'yxat</button><a href="'+url.replace('embed/','watch?v=')+'" target="_blank" class="gold-bg flex-1 p-3 rounded-xl font-bold text-center">YouTube</a></div>';}
+function zkOpen(k){haptic(); zk.k=k; zk.i=Math.min(zkDone(k),MZ.length); zkRender();}
+function zkRender(){let k=zk.k, items=zkItems(k), n=items.length, d=zkDone(k); if(zk.i>=n){$('viewContent').innerHTML='<div class="glass p-6 text-center"><div class="text-5xl font-black gold">✓</div><div class="text-xl font-bold mt-3">Alhamdulillah!</div><div class="text-sm text-zinc-300 mt-2">'+(k==='m'?'Tonggi':'Kechki')+' zikrlar to\'liq bajarildi.</div><button class="gold-bg w-full mt-5 py-3 rounded-[22px] font-bold" onclick="closeView()">Orqaga</button><button class="glass w-full mt-2 py-3" onclick="zkAgain()">Qayta o\'qish</button></div>';return;} let z=items[zk.i], lock=zk.i===d; let html='<div class="flex justify-between text-xs text-zinc-400 mb-2"><span>'+(zk.i+1)+' / '+n+'</span><span class="text-yellow-400">'+z.n+'</span></div><div class="bar mb-3"><div style="width:'+(d/n*100)+'%"></div></div><div class="glass p-4 mb-3"><div class="ar text-yellow-400" style="font-size:22px">'+z.a+'</div></div><div class="glass p-4 mb-3"><div class="text-xs font-bold text-yellow-400 mb-1">Ma\'nosi</div><div class="text-sm">'+z.m+'</div></div><div class="glass p-4 mb-3"><div class="text-xs font-bold text-yellow-400 mb-1">Fazilati</div><div class="text-sm text-zinc-300">'+z.f+'</div><div class="text-[11px] text-zinc-500 mt-2">'+z.s+'</div></div><div class="grid grid-cols-3 gap-2"><button class="glass py-3 '+(zk.i>0?'':'opacity-40')+'" onclick="zkGo(-1)">←</button>'+(lock?'<button class="gold-bg col-span-2 py-3 rounded-[22px] font-bold" onclick="zkCheck()">✓ O\'qidim</button>':'<button class="glass col-span-2 py-3" onclick="zkGo(1)">Keyingi →</button>')+'</div>'; $('viewContent').innerHTML=html;}
+function zkGo(d){let n=zk.i+d; if(n>=0&&n<=zkDone(zk.k)){zk.i=n;zkRender();}}
+function zkCheck(){let d=zkDone(zk.k); if(zk.i!==d) return; haptic(); d++; lsSet(zkKey(zk.k),d); zk.i=d; zkRender(); $('zBar').style.width=(zkDone('m')/MZ.length*100)+'%';}
+function zkAgain(){haptic(); lsSet(zkKey(zk.k),0); zk.i=0; zkRender();}
 
-function closeView(){
- document.getElementById('viewPage').classList.add('hide');
- document.getElementById('mainPage').classList.remove('hide');
- window.scrollTo(0,0);
+/* Obuna tekshiruvi */
+async function checkSub(){
+ if(!WORKER_URL){$('lock').classList.add('hide');return;}
+ try{
+  let initData=tg?.initData||""; if(!initData){$('lock').classList.remove('hide'); return;}
+  $('lock').classList.remove('hide'); $('lockT').innerText='Tekshirilmoqda...';
+  let r=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData,channel:CHANNEL})});
+  let j=await r.json(); if(j.isMember){$('lock').classList.add('hide');} else {$('lockT').innerText='Obuna topilmadi'; $('lockD').innerText='Avval @hakiymqalb ga obuna bo\'ling'; $('lock').classList.remove('hide');}
+ }catch(e){$('lock').classList.add('hide');}
 }
-function filterQ(){let q=document.getElementById('qSearch').value.toLowerCase();document.querySelectorAll('.qitem').forEach(e=>{e.style.display=e.dataset.n.includes(q)?'flex':'none'})}
-function openSura(n){
- let name=SURAS[n-1]; let num=String(n).padStart(3,'0'); let url='https://server8.mp3quran.net/afs/'+num+'.mp3';
- document.getElementById('viewTitle').innerText=n+'. '+name;
- let html='<div class="text-center"><div class="text-[28px] font-black">'+n+'. '+name+'</div><div class="text-zinc-500 text-[12px] mt-1">Mishary Al-Afasy • 114 Sura</div></div><div class="mt-4 bg-zinc-900 rounded-[16px] p-3"><div class="text-[11px] text-yellow-400 font-bold">🎧 AUDIO</div><audio controls autoplay class="w-full mt-2"><source src="'+url+'" type="audio/mpeg"></audio></div><div class="mt-3 glass p-4 rounded-[16px]"><div class="text-yellow-400 text-[22px] text-center">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ</div><div class="mt-3 text-[13px] leading-6">'+name+' surasi matni, tarjimasi bu yerda. To\'liq 114 sura audio bilan.</div></div><div class="mt-4 grid grid-cols-2 gap-2"><button onclick="openSura('+(n>1?n-1:114)+')" class="glass p-3 rounded-xl">← Oldingi</button><button onclick="openSura('+(n<114?n+1:1)+')" class="glass p-3 rounded-xl">Keyingi →</button></div><button onclick="openView(\'quran\')" class="w-full mt-3 bg-yellow-400 text-black p-3 rounded-xl font-bold">📖 114 Ro\'yxatga qaytish</button>';
- document.getElementById('viewContent').innerHTML=html;
- document.getElementById('viewPage').classList.remove('hide');
- document.getElementById('mainPage').classList.add('hide');
-}
+updateTil(); setTimeout(checkSub,800);
 </script>
 </body>
 </html>
