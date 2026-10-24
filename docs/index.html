@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAQVO PRO</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+body{margin:0;background:#070709;color:#fff;font-family:sans-serif;padding-bottom:100px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px}
+.card{background:#18181b;border:1px solid #27272a;border-radius:22px;padding:16px;cursor:pointer}
+.card.big{grid-column:span 2}
+.card.gold{background:gold;color:#000}
+.box{grid-column:span 2;background:#18181b;border-radius:22px;padding:18px;display:none}
+.box.on{display:block}
+.list{grid-column:span 2;display:none;flex-direction:column;gap:8px}
+.list.on{display:flex}
+.item{background:#18181b;border:1px solid #333;border-radius:14px;padding:14px;display:flex;justify-content:space-between}
+.lock{position:fixed;inset:0;background:#070709;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center}
+.btn{width:100%;background:#d4af37;color:#000;border:none;border-radius:16px;padding:16px;font-weight:800;margin-top:14px}
+.btn2{width:100%;background:#27272a;color:#fff;border:1px solid #333;border-radius:14px;padding:14px;display:flex;justify-content:space-between;margin-top:10px;text-decoration:none}
+.circle{width:150px;height:150px;border-radius:50%;border:3px solid #d4af37;margin:20px auto;display:flex;align-items:center;justify-content:center;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="lock" class="lock">
+<div style="font-size:60px">🕌</div>
+<h2>TAQVO PRO</h2>
+<p style="color:#aaa">Kanalga obuna boling</p>
+<a class="btn2" href="https://t.me/hakiymqalb" target="_blank"><span>📢 Hakiym Qalb</span><span style="color:gold">Obuna</span></a>
+<button class="btn" onclick="document.getElementById('lock').style.display='none'">Kirish</button>
+</div>
+
+<div style="text-align:center;padding:20px">
+<h1>TAQVO <b style="color:gold">PRO</b></h1>
+<p style="color:#aaa" id="namozShort">Yuklanmoqda...</p>
+</div>
+
+<div class="grid">
+<div class="card big" onclick="openNamoz()"><div>🕌 Namoz Vaqtları</div><div style="color:#aaa;font-size:12px" id="namozInfo">Karaganda</div></div>
+<div class="card gold" onclick="openBox('tasbehBox')"><div>📿 Tasbeh</div><div id="tasbehMini">0</div></div>
+<div class="card" onclick="openBox('quranBox')"><div>📖 Quran 114 Sura</div></div>
+<div class="card" onclick="openBox('audioBox')"><div>🎧 30 Pora Audio</div></div>
+<div class="card" onclick="openBox('asmaBox')"><div>💎 99 Ism</div></div>
+<div class="card" onclick="openBox('duoBox')"><div>🤲 Duolar</div></div>
+
+<div id="quranBox" class="list"></div>
+<div id="audioBox" class="list"></div>
+<div id="asmaBox" class="list"></div>
+<div id="duoBox" class="list"></div>
+<div id="namozBox" class="list"></div>
+
+<div id="tasbehBox" class="box">
+<div style="text-align:center;font-size:60px" id="tCount">0</div>
+<div class="circle" onclick="incTasbeh()">BOSING</div>
+<button class="btn2" style="justify-content:center" onclick="hideAll()">Yopish</button>
+</div>
+
+<div id="player" class="box">
+<div id="pTitle">Audio</div>
+<audio id="aud" controls style="width:100%;margin-top:10px"></audio>
+<button class="btn2" style="justify-content:center" onclick="hideAll()">Yopish</button>
+</div>
+
+</div>
+
+<script>
+let cnt = 0;
+cnt = parseInt(localStorage.getItem('tasbeh')||'0');
+document.getElementById('tCount').innerText = cnt;
+document.getElementById('tasbehMini').innerText = cnt;
+
+function hideAll(){
+document.querySelectorAll('.box,.list').forEach(e=>e.classList.remove('on'));
+}
+function openBox(id){
+hideAll();
+document.getElementById(id).classList.add('on');
+}
+function incTasbeh(){
+cnt++;
+localStorage.setItem('tasbeh',cnt);
+document.getElementById('tCount').innerText=cnt;
+document.getElementById('tasbehMini').innerText=cnt;
+}
+async function loadNamoz(){
+try{
+let r=await fetch('https://api.aladhan.com/v1/timingsByCity?city=Karaganda&country=Kazakhstan&method=2');
+let j=await r.json();
+let t=j.data.timings;
+document.getElementById('namozShort').innerText='Bomdod '+t.Fajr+' | Shom '+t.Maghrib;
+document.getElementById('namozInfo').innerText='Bomdod '+t.Fajr+' - Shom '+t.Maghrib;
+window.nT=t;
+}catch(e){
+document.getElementById('namozShort').innerText='Karaganda';
+}
+}
+loadNamoz();
+
+function openNamoz(){
+if(!window.nT) return;
+let t=window.nT;
+let h='<div class="item"><span>Bomdod</span><b>'+t.Fajr+'</b></div><div class="item"><span>Peshin</span><b>'+t.Dhuhr+'</b></div><div class="item"><span>Asr</span><b>'+t.Asr+'</b></div><div class="item"><span>Shom</span><b>'+t.Maghrib+'</b></div><div class="item"><span>Hufton</span><b>'+t.Isha+'</b></div>';
+document.getElementById('namozBox').innerHTML=h;
+openBox('namozBox');
+}
+function playJuz(n){
+document.getElementById('player').classList.add('on');
+document.getElementById('pTitle').innerText=n+'-Pora Audio';
+let aud=document.getElementById('aud');
+aud.src='https://server8.mp3quran.net/afs/'+String(n).padStart(3,'0')+'.mp3';
+aud.play();
+}
+
+// Quran
+let suras=["Fotiha","Baqara","Oli Imron","Niso","Moida","Anom","Arof","Anfol","Tavba","Yunus","Hud","Yusuf","Rad","Ibrohim","Hijr","Nahl","Isro","Kahf","Maryam","Toha","Anbiyo","Haj","Mominun","Nur","Furqon","Shuaro","Naml","Qasas","Ankabut","Rum","Luqmon","Sajda","Ahzob","Saba","Fotir","Ya Sin","Soffat","Sod","Zumar","Gofir","Fussilat","Shuro","Zuxruf","Duxon","Josiya","Ahqof","Muhammad","Fath","Hujurot","Qof","Zoriyat","Tur","Najm","Qamar","Rahman","Voqia","Hadid","Mujodala","Hashr","Mumtahana","Soff","Juma","Munofiqun","Tagobun","Taloq","Tahrim","Mulk","Qalam","Haqqa","Maorij","Nuh","Jinn","Muzzammil","Muddassir","Qiyoma","Insan","Mursalat","Naba","Naziat","Abasa","Takvir","Infitor","Mutoffifun","Inshiqoq","Buruj","Toriq","Ala","Goshiya","Fajr","Balad","Shams","Layl","Duha","Sharh","Tin","Alaq","Qadr","Bayyina","Zalzala","Adiyat","Qoria","Takasur","Asr","Humaza","Fil","Quraysh","Maun","Kavsar","Kofirun","Nasr","Masad","Ixlos","Falaq","Nos"];
+let qb=document.getElementById('quranBox');
+for(let i=0;i<suras.length;i++){
+let d=document.createElement('div');
+d.className='item';
+d.innerHTML='<span>📖 '+(i+1)+'. '+suras[i]+'</span><small>></small>';
+qb.appendChild(d);
+}
+let ab=document.getElementById('audioBox');
+for(let i=1;i<=30;i++){
+let d=document.createElement('div');
+d.className='item';
+d.innerHTML='<span>🎧 '+i+'-Pora</span><small style="color:gold">Ijro</small>';
+d.onclick=function(){playJuz(i)};
+ab.appendChild(d);
+}
+let asma=["Rahman","Rahim","Malik","Quddus","Salam","Momin","Muhaymin","Aziz","Jabbar","Mutakabbir","Xoliq","Bori","Musavvir","Gaffor","Qahhor","Vahhob","Rozzaq","Fattah","Alim","Qobid","Bosit","Xofid","Rofi","Muizz","Muzill","Sami","Basir","Hakam","Adl","Latif","Xobir","Halim","Azim","Gafur","Shakur","Aliyy","Kabir","Hafiz","Muqit","Hasib","Jalil","Karim","Roqib","Mujib","Vasi","Hakim","Vadud","Majid","Bois","Shahid","Haqq","Vakil","Qoviyy","Matin","Valiyy","Hamid","Muhsi","Mubdi","Muid","Muhyi","Mumit","Hayy","Qayyum","Vojid","Mojid","Vohid","Ahad","Somad","Qodir","Muqtadir","Muqaddim","Muaxxir","Avval","Oxir","Zohir","Botin","Vali","Mutaali","Barr","Tavvob","Muntaqim","Afuvv","Rouf","Mulk","Jalal","Muqsit","Jomi","Ganiyy","Mugniy","Moni","Dorr","Nofi","Nur","Hadi","Badi","Boqiy","Voris","Rashid","Sobur"];
+let asb=document.getElementById('asmaBox');
+for(let i=0;i<asma.length;i++){
+let d=document.createElement('div');
+d.className='item';
+d.innerHTML='<span>💎 '+(i+1)+'. '+asma[i]+'</span>';
+asb.appendChild(d);
+}
+let duas=["Uyqudan turish","Yotish","Tahorat","Masjid kirish","Ovqat","Safar","Ota-ona","Istixora"];
+let db=document.getElementById('duoBox');
+for(let i=0;i<duas.length;i++){
+let d=document.createElement('div');
+d.className='item';
+d.innerHTML='<span>🤲 '+duas[i]+'</span>';
+db.appendChild(d);
+}
+</script>
+</body>
+</html>
