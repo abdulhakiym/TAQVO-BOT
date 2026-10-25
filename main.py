@@ -148,6 +148,7 @@ async def zikr_job(q):
     else: await send_all("🌙 КЕЧКИ ЗИКР вақти!\n\nЧап менюдаги «Кечки зикрлар»ни ўқиш вақти! Оятул Курсийни ўқинг!")
 
 async def main():
+        await bot.delete_webhook(drop_pending_updates=True)
     scheduler.add_job(oxirat_job, "cron", hour=9, minute=0)
     scheduler.add_job(oxirat_job, "cron", hour=20, minute=30)
     scheduler.add_job(namoz_job, "cron", hour=5, minute=15, args=["Bomdod"])
