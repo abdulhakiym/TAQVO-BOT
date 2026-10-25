@@ -199,7 +199,7 @@ P.tasbeh=()=>runner(TS,null);
 const SH=[['Mishary Rashid Alafasy',/alafasy|alafasi|afasy/i,'https://server8.mp3quran.net/afs/'],['Abdurrahmon As-Sudays',/sudais|sudays/i,'https://server11.mp3quran.net/sds/'],['Mahir Al-Muaiqliy',/muaiqly|maher.*(mu|al)/i,'https://server12.mp3quran.net/maher/'],['Sa\'d Al-G\'omidiy',/saad.*(ghamdi|gamdi)|saud.*ghamdi/i,'https://server7.mp3quran.net/s_gmd/'],['Abu Bakr Ash-Shotriy',/shatri|shatree/i,'https://server11.mp3quran.net/shatri/'],['Yosir Ad-Dosariy',/dosari|dossari|dawsari/i,'https://server11.mp3quran.net/yasser/']];
 let RC=null,SRV='',SHI=0,PL=null,AY=[];
 async function rec(){if(RC)return RC;try{RC=(await (await fetch('https://mp3quran.net/api/v3/reciters?language=eng')).json()).reciters||[]}catch(e){RC=[]}return RC}
-async function srv(i){for(const x of (await rec()).filter(x=>SH[i][1].test(x.name))){const m=(x.moshaf||[]).find(m=>m.surah_total==114);if(m)return m.server.replace(/\/?$/,'/')}return SH[i][2]}
+async function srv(i){const key='/'+SH[i][2].split('/').slice(-2,-1)[0]+'/';for(const x of await rec()){const m=(x.moshaf||[]).find(m=>m.surah_total==114&&m.server.includes(key));if(m)return m.server.replace(/\/?$/,'/')}return SH[i][2]}
 const fm=s=>isFinite(s)?(s/60|0)+':'+String(s%60|0).padStart(2,'0'):'0:00';
 function play(i){PL={t:'s',i};au.src=SRV+pad(i+1)+'.mp3';au.play().catch(()=>toast('Audio ochilmadi. Internetni tekshiring'));mpu()}
 function pj(i){PL={t:'j',i};const a=AY[i];if(!a)return;au.src=a.audio;au.play().catch(()=>toast('Audio ochilmadi'));mpu()}
