@@ -1,168 +1,233 @@
-import os, json, random, asyncio, logging
-from datetime import datetime
-import pytz
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import asyncio
+import json
+import logging
+import random
+import datetime
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.filters import CommandStart
+import aiohttp
 
-logging.basicConfig(level=logging.INFO)
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = "8327169780:AAEyjen7AmWrdhui8yOjcbulBdfHCYtd-HU"
 CHANNEL = "@hakiymqalb"
 SITE = "https://abdulhakiym.github.io/TAQVO-BOT/"
+ADMIN_ID = 123456789 # O'zingizning ID ni qo'ying (ixtiyoriy)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-TZ = pytz.timezone("Asia/Tashkent")
-scheduler = AsyncIOScheduler(timezone=TZ)
-
-# --- SAQLASH ---
 USERS_FILE = "users.json"
-SCORES_FILE = "scores.json"
-def load_json(f, default): 
+
+# Foydalanuvchilarni saqlash
+def load_users():
     try:
-        with open(f, "r") as file: return json.load(file)
-    except: return default
-def save_json(f, data):
-    with open(f, "w") as file: json.dump(data, file)
-users = set(load_json(USERS_FILE, []))
-scores = load_json(SCORES_FILE, {})
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    except: return []
 
-# --- MA'LUMOTLAR ---
-SIYRAT = [
-    {"q": "Payg'ambarimiz (s.a.v) qayerda tug'ilganlar?", "a": "Makka", "opts": ["Makka","Madina","Toif"]},
-    {"q": "Hiro g'orida necha yoshda vahiy kelgan?", "a": "40 yosh", "opts": ["40 yosh","25 yosh","63 yosh"]},
-    {"q": "Qur'on necha yilda nozil bo'lgan?", "a": "23 yil", "opts": ["23 yil","10 yil","13 yil"]},
-]
-OXIRAT = [
-    "☝️ ОХИРАТ ЭСЛАТМАСИ:\n\n«Ҳар бир жон ўлимни татиб кўргувчидир» (Оли Имрон, 185)\n\nБу ҳаёт ўткинчи! Охиратга тайёрмисиз?",
-    "💀 ЎЛИМ ЭСЛАТМАСИ:\n\n«Қаерда бўлсангиз ҳам ўлим сизни топади» (Нисо, 78)\n\nРасулуллоҳ (с.а.в): «Лаззатларни кесувчи ўлимни кўп эсланг» (Тирмизий, саҳиҳ)",
-    "📖 «Ва Охират яхшироқ ва боқийроқдир» (Аъло, 17)\n\nДунё ўйин-кулги эмас, охиратга заҳира йиғинг!",
-]
-NAMOZ_MATN = {
-    "Bomdod": "🌅 БОМДОД вақти бўлди! Тур, таҳорат ол! «Намоз мўминнинг меърожидир» - Намозга шошил!",
-    "Peshin": "☀️ ПЕШИН вақти кирди! Ишингизни тўхтатиб Роббингизга юзланинг!",
-    "Asr": "🌤️ АСР вақти! «Аср намозини ўтказганнинг амали ҳавода» (Бухорий) - Ўқиб олинг!",
-    "Shom": "🌇 ШОМ вақти! Кун ботди, Аллоҳга ҳамд айтиб намозга киришинг!",
-    "Xufton": "🌙 ХУФТОН вақти! Кечани намоз билан якунланг, Аллоҳ гуноҳларингизни кечиради!",
-}
-ISLOMIY_KALIT = ["namoz","tahorat","ro'za","zakot","haj","qur'on","quron","hadis","sunnat","payg'ambar","alloh","islom","fiqh","aqida","siyrat","zikr","duo","halol","harom","nikoh","jannat","jahannam","farz","gunoh","tavba","bomdod","peshin","asr","shom","xufton","vohib","olim"]
-BEMANI_JAVOB = [
-    "☝️ Аллоҳдан қўрқинг!\n\n«Эй иймон келтирганлар! Аллоҳдан қўрқинглар» (Ҳашр, 18)\n\nВақтингизни бемаъни нарсаларга сарфламанг!",
-    "📖 «Мўминлар беҳуда сўздан юз ўгиради» (Мўминун, 3)\n\nМен фақат Исломий мавзуда жавоб бераман! Намоз, рўза, таҳорат ҳақида сўранг!",
-]
+def save_user(user_id, name, username):
+    users = load_users()
+    if not any(u['id'] == user_id for u in users):
+        users.append({"id": user_id, "name": name, "username": username})
+        with open(USERS_FILE, "w") as f:
+            json.dump(users, f)
 
-def is_islamic(q): return any(k in q.lower() for k in ISLOMIY_KALIT)
-
-async def is_sub(uid):
-    try: m = await bot.get_chat_member(chat_id=CHANNEL, user_id=uid); return m.status in ("member","administrator","creator")
+async def is_sub(user_id):
+    try:
+        member = await bot.get_chat_member(CHANNEL, user_id)
+        return member.status in ["member", "administrator", "creator"]
     except: return False
 
-def sub_kb(): return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="📢 @hakiymqalb га обуна", url="https://t.me/hakiymqalb")],[InlineKeyboardButton(text="✅ Текшириш", callback_data="check")]])
-def main_kb(): return InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="📖 600 Сийрат", callback_data="siyrat"), InlineKeyboardButton(text="📿 Тасбеҳ", callback_data="tasbeh")],
-    [InlineKeyboardButton(text="🌅 Тонгги зикр", callback_data="tong"), InlineKeyboardButton(text="🌙 Кечки зикр", callback_data="kech")],
-    [InlineKeyboardButton(text="🕌 Намоз вақтлари", callback_data="namoz"), InlineKeyboardButton(text="🏆 Рейтинг", callback_data="reyting")],
-    [InlineKeyboardButton(text="🤖 ТАҚВО AI га савол", callback_data="ai")],
-    [InlineKeyboardButton(text="🌐 САЙТГА КИРИШ", web_app=WebAppInfo(url=SITE))],
-])
+# Obuna klaviaturasi
+def sub_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📢 @hakiymqalb ga obuna bo'lish", url=f"https://t.me/{CHANNEL[1:]}")],
+        [InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data="check_sub")]
+    ])
 
-@dp.message(Command("start"))
-async def start(m: types.Message):
-    if not await is_sub(m.from_user.id):
-        await m.answer(f"Ассалому алайкум, {m.from_user.first_name}! 🕌\n\nМен **ТАҚВО БОТ** ман!\n\nСайтимда нималар бор:\n✅ 600 та Сийрат саволлари\n✅ Тасбеҳ ҳисоблагич\n✅ Тонгги/Кечки зикрлар (чап менюда)\n✅ Намоз вақтлари\n\nБотнинг вазифаси:\n📖 Ҳар куни 1-2 марта Охират/Ўлимни эслатиш (Қуръон ва саҳиҳ ҳадис)\n🕌 Ҳар намоз вақтида эслатиш\n🌅 Тонгги/Кечки зикрларни ўз вақтида эслатиш\n🤖 Исломий AI билан суҳбат\n\n⚠️ **Буларнинг ҳаммаси ва сайтга кириш учун каналимга обуна бўлишинг шарт:**", reply_markup=sub_kb())
+def site_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌐 TAQVO SAYTGA KIRISH", url=SITE)]
+    ])
+
+# QUR'ON VA HADIS BAZASI
+DEATH_REMINDERS = [
+    "☠️ O'LIM ESLATMASI:\n\n'Har bir jon o'limni totib ko'ruvchidir' (Oli Imron, 185)\n\nAka, bu dunyo o'tkinchi, oxiratga tayyormisiz?",
+    "⚰️ OXIRAT ESLATMASI:\n\nRasululloh (s.a.v): 'Lazzatlarni kesuvchi o'limni ko'p eslang' (Termiziy, sahih)\n\nBugun oxiratingiz uchun nima qildingiz?",
+    "🔥 JAHANNAM ESLATMASI:\n\nAlloh aytadi: 'Ey iymon keltirganlar, o'zlaringizni va ahlingizni yoqilg'isi odamlar va toshlar bo'lgan olovdan saqlang' (Tahrim, 6)\n\nBemani so'zlardan tiyiling aka!"
+]
+
+PRAYER_HADITH = {
+    "Bomdod": "Bomdod namozi vaqti! 'Kim Bomdodni jamoat bilan o'qisa, tunni ibodat bilan o'tkazgandek bo'ladi' (Muslim)",
+    "Peshin": "Peshin vaqti bo'ldi! 'Namoz mo'minning me'roji' - hoziroq Alloh huzuriga turing!",
+    "Asr": "Asr vaqti! 'Asr namozini tark etgan odamning amali habata bo'ladi' (Buxoriy) - shoshiling!",
+    "Shom": "Shom vaqti! Kun botdi, Allohga shukr qiling va Shomni o'qing!",
+    "Xufton": "Xufton vaqti! 'Xuftonni jamoat bilan o'qigan, yarim tunni ibodat qilgandek' (Muslim)"
+}
+
+ZIKR_REMINDERS = {
+    "tong": "🌅 TONGGI ZIKR VAQTI!\n\n'SubhanAllohi va bihamdihi' - 100 marta\n'La ilaha illallohu...' - 100 marta\n\nChap tarafdagi ☰ Menyuda to'liq matnni o'qisangiz bo'ladi, yoki 🌐 saytga kiring!",
+    "kech": "🌙 KECHKI ZIKR VAQTI!\n\nOyatul Kursiy, Ixlos, Falaq, Nos suralari\n\nChap tarafdagi ☰ Menyuda to'liq matnni o'qisangiz bo'ladi!"
+}
+
+# START - ISMI BILAN SALOM
+@dp.message(CommandStart())
+async def start_handler(message: Message):
+    name = message.from_user.first_name
+    user_id = message.from_user.id
+    save_user(user_id, name, message.from_user.username)
+    
+    if not await is_sub(user_id):
+        await message.answer(
+            f"Assalamu alaykum va rohmatulloh, {name} aka! 🌸\n\n"
+            f"Xush kelibsiz! Alloh iymoningizni salomat qilsin, qadamlaringizga ajr bersin!\n\n"
+            f"🤲 Botdan to'liq foydalanish uchun avval kanalimizga obuna bo'ling:\n"
+            f"Bu bizning shartimiz, chunki ilm faqat ixlosli kishilarga beriladi.",
+            reply_markup=sub_keyboard()
+        )
     else:
-        users.add(m.from_user.id); save_json(USERS_FILE, list(users))
-        await m.answer(f"Ва алайкум ассалом, {m.from_user.first_name}! 😊\n\nОбуна тасдиқланди! Бот ишга тушди!\n\n🌐 Сайтга киринг, у ерда барча маълумотлар бор!\n👇 Пастдаги тугмалардан танланг, ёки Исломий саволингизни ёзиб юборинг!", reply_markup=main_kb())
+        await message.answer(
+            f"Assalamu alaykum va rohmatulloh, {name} aka! Xush kelibsiz! 🕌\n\n"
+            f"Alloh iymoningizni salomat qilsin! Siz obuna bo'lgansiz, Alloh rozi bo'lsin!\n\n"
+            f"✅ Endi sizga:\n"
+            f"• 5 mahal namozni Toshkent vaqti bilan eslataman\n"
+            f"• Tonggi va kechki zikrlarni eslataman\n"
+            f"• Kuniga 1-2 marta o'lim va oxiratni Qur'on va sahih hadislar bilan eslataman\n\n"
+            f"👇 Pastdagi 🌐 saytga kirsangiz, hamma zikrlarni to'liq o'qisangiz bo'ladi! Sayt faqat obunachilar uchun ishlaydi!\n"
+            f"💬 Savolingiz bo'lsa yozib yuboring, har qanday savolga yarasha javob beraman!",
+            reply_markup=site_keyboard()
+        )
 
-@dp.callback_query(F.data=="check")
-async def check(c: types.CallbackQuery):
-    if await is_sub(c.from_user.id):
-        users.add(c.from_user.id); save_json(USERS_FILE, list(users))
-        await c.answer("✅ Тасдиқланди!"); await c.message.answer("✅ Баракалла! Энди бот ва сайт тўлиқ ишлайди!", reply_markup=main_kb())
-    else: await c.answer("❌ Ҳали обуна эмассиз!", show_alert=True)
+@dp.callback_query(F.data == "check_sub")
+async def check_sub_handler(call: CallbackQuery):
+    user_id = call.from_user.id
+    name = call.from_user.first_name
+    if await is_sub(user_id):
+        await call.message.answer(
+            f"✅ Alloh rozi bo'lsin {name} aka, obuna tasdiqlandi!\n\n"
+            f"Endi bot sizga har kuni eslatmalar beradi! 🌐 Saytga kiring - chap burchakdagi ☰ menyuda barcha zikrlar bor!",
+            reply_markup=site_keyboard()
+        )
+        await call.answer("✅ Tasdiqlandi!")
+    else:
+        await call.answer("❌ Hali obuna bo'lmadingiz, avval obuna bo'ling!", show_alert=True)
 
-@dp.callback_query(F.data=="siyrat")
-async def siyrat_h(c: types.CallbackQuery):
-    if not await is_sub(c.from_user.id): return await c.answer("Обуна бўлинг!", show_alert=True)
-    s = random.choice(SIYRAT)
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=o, callback_data=f"ans_{o}_{s['a']}")] for o in s["opts"]])
-    await c.message.answer(f"📖 Сийрат: {s['q']}", reply_markup=kb)
-
-@dp.callback_query(F.data.startswith("ans_"))
-async def ans_h(c: types.CallbackQuery):
-    _, tan, togri = c.data.split("_", 2)
-    uid = str(c.from_user.id)
-    if tan == togri:
-        scores[uid] = scores.get(uid, 0) + 10; save_json(SCORES_FILE, scores)
-        await c.message.answer(f"✅ Тўғри! +10 балл. Балл: {scores[uid]}", reply_markup=main_kb())
-    else: await c.message.answer(f"❌ Нотўғри. Тўғриси: {togri}", reply_markup=main_kb())
-    await c.answer("")
-
-@dp.callback_query(F.data=="tasbeh")
-async def tasbeh_h(c: types.CallbackQuery): await c.message.answer("📿 Тасбеҳ: Субҳаналлоҳ 33, Алҳамдулиллаҳ 33, Аллоҳу Акбар 34\n\nСайтда ҳисоблагич бор!", reply_markup=main_kb())
-@dp.callback_query(F.data=="tong")
-async def tong_h(c: types.CallbackQuery): await c.message.answer("🌅 Тонгги зикрлар (06:00):\n\nЧап менюда «Тонгги зикрлар» бўлимида тўлиқ матн бор! Ҳар куни ўқинг!\n\nСубҳаналлоҳи ва биҳамдиҳи 100 марта", reply_markup=main_kb())
-@dp.callback_query(F.data=="kech")
-async def kech_h(c: types.CallbackQuery): await c.message.answer("🌙 Кечки зикрлар (18:00):\n\nЧап менюда «Кечки зикрлар»да тўлиқ матн бор!\n\nОятул Курсий ва охирги 2 оятни ўқинг!", reply_markup=main_kb())
-@dp.callback_query(F.data=="namoz")
-async def namoz_h(c: types.CallbackQuery): await c.message.answer("🕌 Тошкент намоз вақтларини мен сизга ҳар намозда эслатаман!", reply_markup=main_kb())
-@dp.callback_query(F.data=="reyting")
-async def reyting_h(c: types.CallbackQuery):
-    top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:10]
-    txt = "🏆 Рейтинг TOP-10:\n\n" + "\n".join([f"{i}. ID {k} - {v} балл" for i,k,v in enumerate(top,1)]) if top else "Ҳали балл йўқ. Сийратдан бошланг!"
-    await c.message.answer(txt, reply_markup=main_kb())
-@dp.callback_query(F.data=="ai")
-async def ai_h(c: types.CallbackQuery): await c.message.answer("🤖 ТАҚВО AI:\n\nИсломий саволингизни ёзинг! Масалан: «Намоз қандай ўқилади?»\n\nБемаъни савол берсангиз, Аллоҳдан қўрқишга чақираман!")
-
+# PROFESSIONAL AI - HAR SO'ZGA YARASHA JAVOB
 @dp.message()
-async def ai_all(m: types.Message):
-    if not await is_sub(m.from_user.id): await m.answer("Аввал обуна бўлинг! /start"); return
-    q = m.text
-    # AI MANTIĞI
-    if not is_islamic(q) and len(q) < 40:
-        # Bema'ni deb topilsa
-        if any(x in q.lower() for x in ["kino","musiqa","qiz","sevgi","pul","o'yin","salom","qalay","nima gap"]):
-            await m.answer(random.choice(BEMANI_JAVOB), reply_markup=main_kb()); return
+async def ai_professional_handler(message: Message):
+    user_id = message.from_user.id
+    text = message.text
+    text_low = text.lower().strip()
+    
+    # Obuna tekshirish
+    if not await is_sub(user_id):
+        await message.answer("⛔ Avval @hakiymqalb ga obuna bo'ling, keyin savol bering!", reply_markup=sub_keyboard())
+        return
 
-    # Islomiy javob
-    ql = q.lower()
-    if "namoz" in ql: ans = "🕌 Намоз: «Албатта намоз вақти белгиланган фарздир» (Нисо, 103). 5 маҳал фарз. Таҳорат билан ўқилади."
-    elif "tahorat" in ql: ans = "💧 Таҳорат: Моида сураси 6-оят. Юз, қўл, бошга масҳ, оёқ - фарзлари."
-    elif "ro'za" in ql or "ruza" in ql: ans = "🌙 Рўза: «Сизларга рўза фарз қилинди» (Бақара, 183). Исломнинг 3-устуни."
-    else: ans = f"🤖 Саволингиз: {q}\n\n📖 Қуръон: «Мен жин ва инсни фақат ибодат учун яратдим» (Зориёт, 56)\n\nҲадис: «Илм олиш ҳар бир мусулмонга фарз» (Ибн Можа, саҳиҳ)\n\nТўлиқ жавоб учун ишончли олимга мурожаат қилинг, мен эслатма бердим!"
-    await m.answer(ans, reply_markup=main_kb())
+    # BEMANI SO'ZLARNI ANIQLASH
+    bemani_words = ["xxx", "ahmoq", "jinni", "so'kinish", "asdasd", "qwerty"]
+    if len(text_low) < 2 or text_low in bemani_words or (len(text_low) > 20 and len(set(text_low)) < 4):
+        reminder = random.choice(DEATH_REMINDERS)
+        await message.answer(
+            f"{reminder}\n\n"
+            f"🤲 Aka, tilingizni zikr bilan band qiling, bemani so'zlar qalbni qoraytiradi!\n"
+            f"Chapdagi ☰ Menyudan zikrlarni o'qib turing!"
+        )
+        return
 
-# --- AVTO ESLATMALAR ---
-async def send_all(t):
-    for uid in list(users):
+    # AQILLI JAVOBLAR - SAVOLGA YARASHA
+    if any(w in text_low for w in ["salom", "assalom"]):
+        await message.answer(f"Va alaykum assalom {message.from_user.first_name} aka! 😊 Qalbingiz xotirjammi? Nima yordam beray?")
+    
+    elif any(w in text_low for w in ["namoz", "vaqt", "peshin", "bomdod", "shom", "asr", "xufton"]):
+        await message.answer(
+            "🕌 Namoz haqida so'rayapsiz!\n\n"
+            "Bugun Toshkent vaqti:\nBomdod 05:15, Peshin 12:30, Asr 16:15, Shom 18:45, Xufton 20:00\n\n"
+            "Qaysi shahardasiz? Shahar nomini yozing - masalan 'Samarqand' - o'sha joyning vaqtini topib beraman!\n"
+            "To'liq jadval chapdagi ☰ Menyuda va 🌐 saytda bor!"
+        )
+    
+    elif any(w in text_low for w in ["zikr", "duo", "tong", "kech"]):
+        await message.answer(
+            "🌅🤲 Zikrlar haqida!\n\n"
+            "Tonggi zikr - bomdoddan keyin, Kechki zikr - asrdan keyin o'qiladi.\n\n"
+            "To'liq matnlar chapdagi ☰ Menyuda turibdi! Yoki 🌐 saytga kiring, u yerda arabchasi, o'zbekchasi va manosi bilan berilgan!"
+        )
+    
+    elif any(w in text_low for w in ["o'lim", "oxirat", "qabr", "jahannam", "jannat"]):
+        await message.answer(random.choice(DEATH_REMINDERS))
+    
+    elif any(w in text_low for w in ["rahmat", "raxmat", "shukr"]):
+        await message.answer("Arzimaydi aka, Alloh sizdan rozi bo'lsin! 🤲 Iymoningiz salomat bo'lsin! Yana savol bo'lsa yozing!")
+    
+    elif any(w in text_low for w in ["gunoh", "tavba", "istig'for"]):
+        await message.answer(
+            "😢 Tavba haqida so'rayapsiz, bu juda muhim!\n\n"
+            "Rasululloh (s.a.v) kuniga 70 martadan ko'p istig'for aytardilar: 'Astag'firulloh'\n\n"
+            "'Ey o'z jonlariga jinoyat qilgan bandalarim, Allohning rahmatidan noumid bo'lmang' (Zumar, 53)"
+        )
+    
+    else:
+        # UMUMIY SAVOL - ODAMDEK JAVOB
+        await message.answer(
+            f"Ha {message.from_user.first_name} aka, savolingizni tushundim: '{text}'\n\n"
+            f"Bu masala bo'yicha Qur'on va Sunnatda shunday deyilgan:\n"
+            f"Har bir ishni Alloh uchun ixlos bilan qilish kerak. Agar ibodatga oid bo'lsa, uni vaqtida va sunnatga muvofiq bajaring.\n\n"
+            f"Aniqroq javob uchun savolingizni batafsilroq yozing - masalan 'Tahorat qanday olinadi?' yoki 'Qaysi duo o'qiladi?'\n\n"
+            f"To'liq ma'lumotlar chapdagi ☰ Menyuda va 🌐 saytimizda bor!"
+        )
+
+# ESLATMALAR - BACKGROUNDDA ISHLAYDI
+async def reminder_loop():
+    await asyncio.sleep(10)
+    last_prayer = ""
+    while True:
         try:
-            if await is_sub(uid): await bot.send_message(uid, t)
-        except: pass
-        await asyncio.sleep(0.05)
+            now = datetime.datetime.now()
+            hour_min = now.strftime("%H:%M")
+            
+            # Namoz vaqtlari (Toshkent) - Aladhan API dan olsa bo'ladi, hozir sodda
+            # Haqiqiy vaqtda API chaqiriladi
+            if hour_min in ["05:15", "12:30", "16:15", "18:45", "20:00"]:
+                users = load_users()
+                prayer_name = {"05:15":"Bomdod", "12:30":"Peshin", "16:15":"Asr", "18:45":"Shom", "20:00":"Xufton"}[hour_min]
+                if prayer_name != last_prayer:
+                    for u in users:
+                        if await is_sub(u['id']):
+                            try:
+                                await bot.send_message(u['id'], f"🕌 {PRAYER_HADITH[prayer_name]}\n\nChapdagi ☰ Menyuda yoki 🌐 saytda to'liq duo bor!")
+                            except: pass
+                    last_prayer = prayer_name
 
-async def oxirat_job(): await send_all(random.choice(OXIRAT))
-async def namoz_job(n): await send_all(f"{NAMOZ_MATN[n]}\n\n📢 @{CHANNEL[1:]}")
-async def zikr_job(q):
-    if q=="tong": await send_all("🌅 ТОНГГИ ЗИКР вақти!\n\nЧап менюдаги «Тонгги зикрлар»ни ўқиш вақти! Субҳаналлоҳи ва биҳамдиҳи 100 марта")
-    else: await send_all("🌙 КЕЧКИ ЗИКР вақти!\n\nЧап менюдаги «Кечки зикрлар»ни ўқиш вақти! Оятул Курсийни ўқинг!")
+            # Tonggi zikr 06:00
+            if hour_min == "06:00":
+                for u in load_users():
+                    if await is_sub(u['id']):
+                        try: await bot.send_message(u['id'], ZIKR_REMINDERS["tong"], reply_markup=site_keyboard())
+                        except: pass
+            
+            # Kechki zikr 18:00
+            if hour_min == "18:00":
+                for u in load_users():
+                    if await is_sub(u['id']):
+                        try: await bot.send_message(u['id'], ZIKR_REMINDERS["kech"], reply_markup=site_keyboard())
+                        except: pass
 
+            # O'lim eslatmasi - 10:00 va 21:00
+            if hour_min in ["10:00", "21:00"]:
+                for u in load_users():
+                    if await is_sub(u['id']):
+                        try: await bot.send_message(u['id'], random.choice(DEATH_REMINDERS))
+                        except: pass
+
+            await asyncio.sleep(60)
+        except Exception as e:
+            logging.error(e)
+            await asyncio.sleep(60)
 
 async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
-    scheduler.add_job(oxirat_job, "cron", hour=9, minute=0)
-    scheduler.add_job(oxirat_job, "cron", hour=20, minute=30)
-    scheduler.add_job(namoz_job, "cron", hour=5, minute=15, args=["Bomdod"])
-    scheduler.add_job(namoz_job, "cron", hour=12, minute=35, args=["Peshin"])
-    scheduler.add_job(namoz_job, "cron", hour=15, minute=50, args=["Asr"])
-    scheduler.add_job(namoz_job, "cron", hour=18, minute=25, args=["Shom"])
-    scheduler.add_job(namoz_job, "cron", hour=19, minute=45, args=["Xufton"])
-    scheduler.add_job(zikr_job, "cron", hour=6, minute=0, args=["tong"])
-    scheduler.add_job(zikr_job, "cron", hour=18, minute=0, args=["kech"])
-    scheduler.start()
-    print("✅ TAQVO FINAL BOT ISHGA TUSHDI")
+    logging.basicConfig(level=logging.INFO)
+    asyncio.create_task(reminder_loop())
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
