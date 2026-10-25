@@ -246,4 +246,6 @@ P.top=async()=>{const p=S.g('pts',0),dys=S.g('last',0)?Math.floor((Date.now()-S.
 function gate(t){$('#bk').style.display='none';$('#app').innerHTML=`<div class="card" style="text-align:center;padding:28px"><div style="font-size:46px">🔒</div><h2>${t=='sub'?'Avval kanalga obuna bo\'ling':t=='tg'?'Telegram ichida oching':'Ulanishda xatolik'}</h2><p class="sub" style="margin:10px 0 16px">Ilova faqat @${CFG.CH} kanali obunachilari uchun ishlaydi.</p><div class="lk"><a class="nc" href="https://t.me/${CFG.CH}" target="_blank">Kanalga o'tish</a></div><button class="b2 gold" style="width:100%;margin-top:12px" onclick="boot()">✓ Obuna bo'ldim, tekshirish</button></div>`;loc($('#app'))}
 async function boot(){nav();if(CFG.API){if(!(tg&&tg.initData))return gate('tg');try{const r=await api('/check',{});if(!r.ok)return gate('sub')}catch(e){return gate('net')}}go('home')}
 boot();
-</script></body></html>
+</script>
+<script src="paket1.js"></script>
+</body></html>
