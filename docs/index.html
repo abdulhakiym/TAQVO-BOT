@@ -2,145 +2,120 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TAQVO PRO MAX</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TAQVO PRO MAX - TO'LIQ FINAL</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>body{background:#050507;color:#fff}.glass{background:rgba(255,255,255,.08);border:1px solid rgba(255,215,0,.3)}.gold{background:linear-gradient(135deg,#FF8C00,#FFD700);color:#000}.hide{display:none}</style>
+<style>
+body{background:#050507;color:#fff;font-family:-apple-system}
+.glass{background:linear-gradient(135deg,rgba(255,255,255,.09),rgba(255,255,255,.03));border:1px solid rgba(255,215,0,.30);backdrop-filter:blur(10px)}
+.gold{background:linear-gradient(135deg,#FF8C00,#FFD700);color:#000}
+.hide{display:none!important}
+</style>
 </head>
 <body>
-<div class="max-w-[440px] mx-auto p-4" id="main">
-<h1 class="text-[26px] font-black">TAQVO<br><span class="text-[10px] tracking-[6px] text-zinc-400">PRO MAX</span></h1>
-<div class="text-[10px] text-zinc-500">16 BO'LIM • BOSILADI • KIRADI • FINAL</div>
+<div id="main" class="max-w-[440px] mx-auto min-h-screen p-4 pb-24">
+<h1 class="text-[28px] font-black leading-none">TAQVO<br><span class="text-[11px] tracking-[7px] text-zinc-400">PRO MAX</span></h1>
+<div class="text-[10px] text-zinc-500 mt-1">16 BO'LIM • TO'LIQ • BOSILADI • MUKAMMAL</div>
 
 <div class="mt-5 grid gap-3">
-<div onclick="openView('quran')" class="gold rounded-xl p-4 font-black">📖 QURAN 114 Sura - BOSING ▶</div>
+<div onclick="go('quran')" class="gold rounded-[18px] p-5 flex items-center gap-3"><div class="w-12 h-12 bg-black/20 rounded-full flex items-center justify-center text-xl">📖</div><div><div class="font-black">QURAN KAREEM</div><div class="text-xs">114 Sura • 30 Pora • 6 Qori • To'liq qiroat</div></div><div class="ml-auto">▶</div></div>
+
 <div class="grid grid-cols-2 gap-3">
-<div onclick="openView('tasbeh')" class="glass rounded-xl p-4"><div class="font-bold text-sm">📿 Tasbeh</div><div class="text-[11px] text-yellow-400" id="tCnt">0/33 - BOSING</div></div>
-<div onclick="openView('zikr')" class="glass rounded-xl p-4"><div class="font-bold text-sm">🌙 Zikr</div><div class="text-[10px] text-zinc-400">15 ta</div></div>
-<div onclick="openView('qori')" class="glass rounded-xl p-4 border-yellow-400"><div class="font-bold text-sm">🎧 6 Qori</div><div class="text-[10px] text-yellow-400">BOSING - 114 Sura ▶</div></div>
-<div onclick="openView('pora')" class="glass rounded-xl p-4 border-yellow-400"><div class="font-bold text-sm">🔖 30 Pora</div><div class="text-[10px] text-yellow-400">BOSING - Qiroat ▶</div></div>
-<div onclick="openView('game')" class="glass rounded-xl p-4"><div class="font-bold text-sm">🎮 O'yin</div><div class="text-[10px]">40 savol</div></div>
-<div onclick="openView('farz')" class="glass rounded-xl p-4"><div class="font-bold text-sm">📋 40 Farz</div><div class="text-[10px]">To'liq</div></div>
-<div onclick="openView('islom')" class="glass rounded-xl p-4"><div class="font-bold text-sm">📚 Islom 300</div><div class="text-[10px]">Savol-javob</div></div>
-<div onclick="openView('hadis')" class="glass rounded-xl p-4"><div class="font-bold text-sm">📜 Hadis</div><div class="text-[10px]">200 ta</div></div>
-<div onclick="openView('duolar')" class="glass rounded-xl p-4"><div class="font-bold text-sm">🤲 Duolar</div><div class="text-[10px]">20 ta</div></div>
-<div onclick="openView('ism')" class="glass rounded-xl p-4"><div class="font-bold text-sm">⭐ 99 Ism</div><div class="text-[10px]">Ma'nolari</div></div>
-<div onclick="openView('reyting')" class="glass rounded-xl p-4"><div class="font-bold text-sm">🏆 Reyting</div><div class="text-[10px]">Umumiy</div></div>
-<div onclick="openView('namoz')" class="glass rounded-xl p-4"><div class="font-bold text-sm">🕌 Namoz</div><div class="text-[10px]">Vaqtlari</div></div>
-<div onclick="openView('siyrat')" class="glass rounded-xl p-4"><div class="font-bold text-sm">📖 Siyrat</div><div class="text-[10px]">Hayot</div></div>
-<div onclick="openView('fiqh')" class="glass rounded-xl p-4"><div class="font-bold text-sm">⚖️ Fiqh</div><div class="text-[10px]">Masalalar</div></div>
+<div onclick="go('tasbeh')" class="glass rounded-xl p-4"><div class="text-[9px] text-yellow-400 font-bold">TASBEH</div><div class="font-bold text-sm mt-1">📿 Tasbeh</div><div class="text-xs text-yellow-400" id="tc">0/33 • BOSING</div><div class="text-[9px] text-zinc-500">Jami: <span id="tt">0</span></div></div>
+<div onclick="go('zikr')" class="glass rounded-xl p-4"><div class="text-[9px] text-yellow-400 font-bold">ZIKR</div><div class="font-bold text-sm mt-1">🌙 15 Zikr</div><div class="text-[10px] text-zinc-500">Tong & Kech to'liq</div></div>
+<div onclick="go('qori')" class="glass rounded-xl p-4 border-yellow-400/50"><div class="font-bold text-[13px]">🎧 6 Qori</div><div class="text-[10px] text-yellow-400 font-bold">BOSING ▶ 114 Sura</div><div class="text-[9px] text-zinc-400">Afasy, Sudais, Mahir...</div></div>
+<div onclick="go('pora')" class="glass rounded-xl p-4 border-yellow-400/50"><div class="font-bold text-[13px]">🔖 30 Pora</div><div class="text-[10px] text-yellow-400 font-bold">BOSING ▶ Qiroat</div><div class="text-[9px] text-zinc-400">Har pora audio</div></div>
+<div onclick="go('game')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">🎮 Siyrat O'yini</div><div class="text-[10px] text-zinc-500">40 savol • Ball beriladi</div></div>
+<div onclick="go('farz')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">📋 40 Farz</div><div class="text-[10px] text-zinc-500">To'liq ro'yxat • Mukammal</div></div>
+<div onclick="go('islom')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">📚 Islom 300</div><div class="text-[10px] text-zinc-500">300 savol-javob to'liq</div></div>
+<div onclick="go('hadis')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">📜 200 Hadis</div><div class="text-[10px] text-zinc-500">Buxoriy, Muslim to'liq</div></div>
+<div onclick="go('duolar')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">🤲 Duolar</div><div class="text-[10px] text-zinc-500">20 ta kunlik duo</div></div>
+<div onclick="go('ism')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">⭐ 99 Ism</div><div class="text-[10px] text-zinc-500">Ma'nolari bilan to'liq</div></div>
+<div onclick="go('reyting')" class="glass rounded-xl p-4 border-yellow-400/30"><div class="font-bold text-[13px] text-yellow-400">🏆 Reyting</div><div class="text-[10px] text-zinc-400">Umumiy Top • Ball</div></div>
+<div onclick="go('namoz')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">🕌 Namoz</div><div class="text-[10px] text-zinc-500">Qarag'anda vaqti to'liq</div></div>
+<div onclick="go('siyrat')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">📖 Siyrat</div><div class="text-[10px] text-zinc-500">Payg'ambar ﷺ hayoti 40 qism</div></div>
+<div onclick="go('fiqh')" class="glass rounded-xl p-4"><div class="font-bold text-[13px]">⚖️ Fiqh</div><div class="text-[10px] text-zinc-500">30 masala • Mukammal</div></div>
 </div>
 </div>
+<a href="https://t.me/hakiymqalb" target="_blank" class="mt-6 bg-[#229ED9] rounded-xl p-3 text-center font-bold text-sm block">📢 @hakiymqalb - 37k obunachi</a>
 </div>
 
-<div id="view" class="hide fixed inset-0 bg-[#050507] z-50 p-4 overflow-auto">
-<div class="max-w-[440px] mx-auto">
-<button onclick="closeView()" class="w-10 h-10 bg-white text-black rounded-full font-black">←</button>
-<span id="vTitle" class="font-black ml-2"></span>
-<div id="vContent" class="mt-4 pb-20"></div>
-</div>
-</div>
+<div id="view" class="hide fixed inset-0 bg-[#050507] z-50 overflow-auto p-4"><div class="max-w-[440px] mx-auto"><div class="flex items-center gap-3 sticky top-0 bg-[#050507] py-3 -mx-4 px-4 border-b border-zinc-800"><button onclick="back()" class="w-10 h-10 bg-white text-black rounded-full font-black">←</button><b id="vt" class="font-black"></b></div><div id="vc" class="mt-4 pb-24"></div></div></div>
 
 <script>
-let c = parseInt(localStorage.getItem('tasbeh')||'0');
-function upd(){ let e=document.getElementById('tCnt'); if(e) e.innerText=(c%33)+'/33 - BOSING'; } upd();
+let tg=window.Telegram?.WebApp; if(tg) tg.expand();
+let c=parseInt(localStorage.getItem('taqvo_t')||'0');
+function upd(){let a=document.getElementById('tc');let b=document.getElementById('tt');if(a)a.innerText=(c%33)+'/33 • BOSING';if(b)b.innerText=c}upd();
 
-function openView(type){
-let main = document.getElementById('main');
-let view = document.getElementById('view');
-let title = document.getElementById('vTitle');
-let content = document.getElementById('vContent');
-main.classList.add('hide');
-view.classList.remove('hide');
+function go(type){
+document.getElementById('main').classList.add('hide');
+document.getElementById('view').classList.remove('hide');
 window.scrollTo(0,0);
+let vt=document.getElementById('vt');
+let vc=document.getElementById('vc');
 
 if(type=='quran'){
-title.innerText='📖 114 Sura';
-let h='<input oninput="if(this.value==\'\'){document.querySelectorAll(\'.sura\').forEach(x=>x.style.display=\'block\')}else{document.querySelectorAll(\'.sura\').forEach(x=>{x.style.display=x.innerText.toLowerCase().includes(this.value.toLowerCase())?\'block\':\'none\'})}" placeholder="🔍 Qidirish..." class="w-full bg-zinc-900 p-3 rounded-xl text-sm mb-3"><div class="grid gap-2">';
+vt.innerText='📖 QURAN 114 Sura - To\'liq qiroat';
 let suras=["Fotiha","Baqara","Oli Imron","Niso","Moida","An'om","A'rof","Anfol","Tavba","Yunus","Hud","Yusuf","Ra'd","Ibrohim","Hijr","Nahl","Isro","Kahf","Maryam","Toha","Anbiyo","Haj","Mu'minun","Nur","Furqon","Shuaro","Naml","Qasas","Ankabut","Rum","Luqmon","Sajda","Ahzob","Saba","Fotir","Yasin","Saffat","Sod","Zumar","G'ofir","Fussilat","Shuro","Zuxruf","Duxon","Josiya","Ahqof","Muhammad","Fath","Hujurot","Qof","Zariyot","Tur","Najm","Qamar","Rohman","Voqea","Hadid","Mujodala","Hashr","Mumtahana","Soff","Juma","Munofiqun","Tag'obun","Taloq","Tahrim","Mulk","Qalam","Haqqa","Maorij","Nuh","Jin","Muzzammil","Muddassir","Qiyomat","Inson","Mursalat","Naba","Nazi'at","Abasa","Takvir","Infitor","Mutaffifin","Inshiqoq","Buruj","Toriq","A'la","G'oshiya","Fajr","Balad","Shams","Layl","Duho","Sharh","Tin","Alaq","Qadr","Bayyina","Zalzala","Adiyat","Qori'a","Takasur","Asr","Humaza","Fil","Quraysh","Ma'un","Kavsar","Kofirun","Nasr","Masad","Ixlos","Falaq","Nos"];
-suras.forEach((n,i)=>{ let num=String(i+1).padStart(3,'0'); h+='<div class="sura glass p-3 rounded-xl" onclick="playAudio(\''+num+'\',\''+n+'\')"><b class="text-yellow-400">'+(i+1)+'.</b> '+n+' <span class="float-right">▶</span></div>'; });
-h+='</div>'; content.innerHTML=h;
+let h='<input id="qs" oninput="let v=this.value.toLowerCase();document.querySelectorAll(\'.s\').forEach(x=>x.style.display=x.innerText.toLowerCase().includes(v)?\'block\':\'none\')" placeholder="🔍 Qidirish - masalan Yasin" class="w-full bg-zinc-900 border border-yellow-400/20 p-3 rounded-xl text-sm mb-3"><div class="grid gap-2">';
+suras.forEach((n,i)=>{let num=String(i+1).padStart(3,'0');h+='<div class="s glass p-3 rounded-xl flex justify-between items-center" onclick="let aud=this.querySelector(\'audio\');let box=this.querySelector(\'.box\');box.style.display=box.style.display==\'none\'?\'block\':\'none\';if(box.style.display==\'block\'){aud.play()}else{aud.pause()}"><span><b class="text-yellow-400">'+(i+1)+'.</b> '+n+'</span><span class="text-yellow-400">▶</span><div class="box hide w-full mt-2" style="display:none"><audio controls class="w-full"><source src="https://server8.mp3quran.net/afs/'+num+'.mp3"></audio><div class="text-[10px] text-zinc-500 mt-1">Mishary Al-Afasy • '+n+'</div></div></div>'});h+='</div>';vc.innerHTML=h;
 }
 else if(type=='pora'){
-title.innerText='🔖 30 Pora';
-let h='<div class="text-xs text-zinc-400 mb-3">Har bir pora bosilsa qiroati chiqadi</div><div class="grid grid-cols-3 gap-2">';
-for(let i=1;i<=30;i++){ h+='<div class="glass p-3 rounded-xl text-center" onclick="openPora('+i+')"><div class="font-bold">'+i+'-Pora</div><div class="text-[10px] text-yellow-400">▶ Qiroat</div></div>'; }
-h+='</div>'; content.innerHTML=h;
+vt.innerText='🔖 30 Pora - To\'liq qiroat';
+let poras=[[1,"Fotiha - Baqara 141"],[2,"Baqara 142-252"],[3,"Baqara 253 - Oli Imron 92"],[4,"Oli Imron 93 - Niso 23"],[5,"Niso 24-147"],[6,"Niso 148 - Moida 81"],[7,"Moida 82 - An'om 110"],[8,"An'om 111 - A'rof 87"],[9,"A'rof 88 - Anfol 40"],[10,"Anfol 41 - Tavba 92"],[11,"Tavba 93 - Hud 5"],[12,"Hud 6 - Yusuf 52"],[13,"Yusuf 53 - Ibrohim"],[14,"Hijr - Nahl"],[15,"Isro - Kahf 74"],[16,"Kahf 75 - Toha"],[17,"Anbiyo - Haj"],[18,"Mu'minun - Furqon 20"],[19,"Furqon 21 - Naml 55"],[20,"Naml 56 - Ankabut 45"],[21,"Ankabut 46 - Ahzob 30"],[22,"Ahzob 31 - Yasin 27"],[23,"Yasin 28 - Zumar 31"],[24,"Zumar 32 - Fussilat 46"],[25,"Fussilat 47 - Josiya"],[26,"Ahqof - Zariyot 30"],[27,"Zariyot 31 - Hadid"],[28,"Mujodala - Tahrim"],[29,"Mulk - Mursalat"],[30,"Naba - Nos"]];
+let h='<div class="text-[11px] text-zinc-400 mb-3">Har pora bosilsa qiroati chiqadi - Mishary Al-Afasy</div><div class="grid grid-cols-3 gap-2">';poras.forEach(p=>{h+='<div class="glass p-3 rounded-xl text-center" onclick="openPora('+p[0]+')"><div class="font-bold text-sm">'+p[0]+'-Pora</div><div class="text-[8px] text-zinc-400 leading-tight">'+p[1]+'</div><div class="text-[10px] text-yellow-400 font-bold mt-1">▶ Qiroat</div></div>'});h+='</div>';vc.innerHTML=h;
 }
 else if(type=='qori'){
-title.innerText='🎧 6 Qori';
-let qoris=[["Mishary Al-Afasy","afs"],["As-Sudais","sds"],["Mahir","maherm"],["Ghamdi","s_gmd"],["Shatri","shatri"],["Yasser","yasser"]];
-let h='<div class="grid gap-2">';
-qoris.forEach(q=>{ h+='<div class="glass p-4 rounded-xl" onclick="openQori(\''+q[1]+'\',\''+q[0]+'\')"><div class="font-bold">'+q[0]+'</div><div class="text-xs text-yellow-400">114 Sura qiroati - BOSING ▶</div></div>'; });
-h+='</div>'; content.innerHTML=h;
+vt.innerText='🎧 6 Qori - 114 Sura to\'liq';
+let h='<div class="text-[11px] text-zinc-400 mb-3">Qorini tanlang - 114 sura qiroati chiqadi</div><div class="grid gap-2"><div class="glass p-4 rounded-xl flex justify-between items-center" onclick="openQori(\'afs\',\'Mishary Al-Afasy\')"><div><div class="font-bold text-sm">Mishary Al-Afasy</div><div class="text-[11px] text-zinc-400">Kuvayt • 114 Sura</div></div><div class="w-9 h-9 bg-yellow-400 text-black rounded-full flex items-center justify-center font-black">▶</div></div><div class="glass p-4 rounded-xl flex justify-between" onclick="openQori(\'sds\',\'Abdurrahman As-Sudais\')"><div><div class="font-bold text-sm">As-Sudais</div><div class="text-[11px] text-zinc-400">Makka Imomi • 114 Sura</div></div><div class="w-9 h-9 bg-yellow-400 text-black rounded-full flex items-center justify-center font-black">▶</div></div><div class="glass p-4 rounded-xl flex justify-between" onclick="openQori(\'maherm\',\'Mahir Al-Muaiqly\')"><div><div class="font-bold text-sm">Mahir Al-Muaiqly</div><div class="text-[11px] text-zinc-400">Makka Imomi • 114 Sura</div></div><div class="w-9 h-9 bg-yellow-400 text-black rounded-full flex items-center justify-center">▶</div></div><div class="glass p-4 rounded-xl flex justify-between" onclick="openQori(\'s_gmd\',\'Saad Al-Ghamdi\')"><div><div class="font-bold text-sm">Saad Al-Ghamdi</div><div class="text-[11px] text-zinc-400">114 Sura</div></div><div class="w-9 h-9 bg-yellow-400 text-black rounded-full flex items-center justify-center">▶</div></div><div class="glass p-4 rounded-xl flex justify-between" onclick="openQori(\'shatri\',\'Abu Bakr Ash-Shatri\')"><div><div class="font-bold text-sm">Abu Bakr Ash-Shatri</div><div class="text-[11px] text-zinc-400">114 Sura</div></div><div class="w-9 h-9 bg-yellow-400 text-black rounded-full flex items-center justify-center">▶</div></div><div class="glass p-4 rounded-xl flex justify-between" onclick="openQori(\'yasser\',\'Yasser Al-Dosari\')"><div><div class="font-bold text-sm">Yasser Al-Dosari</div><div class="text-[11px] text-zinc-400">114 Sura</div></div><div class="w-9 h-9 bg-yellow-400 text-black rounded-full flex items-center justify-center">▶</div></div></div>';vc.innerHTML=h;
 }
 else if(type=='tasbeh'){
-title.innerText='📿 Tasbeh';
-content.innerHTML='<div class="glass rounded-[24px] p-8 text-center"><div class="text-[60px] font-black text-yellow-400" id="big">'+(c%33)+'</div><div>/33</div><button onclick="addTasbeh()" class="mt-6 gold w-full p-5 rounded-xl font-black text-lg">BOSISH</button><div class="mt-3 flex gap-2"><button onclick="c=0;localStorage.setItem(\'tasbeh\',\'0\');upd();document.getElementById(\'big\').innerText=\'0\'" class="glass flex-1 p-3 rounded-xl">Nol</button><button onclick="closeView()" class="glass flex-1 p-3 rounded-xl">Orqaga</button></div><div class="mt-3 text-xs">Jami: '+c+'</div></div>';
+vt.innerText='📿 Tasbeh - Mukammal';
+vc.innerHTML='<div class="glass rounded-[24px] p-8 text-center border-yellow-400/30"><div class="text-[11px] text-yellow-400 font-bold tracking-[3px]">SUBHANALLAH</div><div class="text-[64px] font-black text-yellow-400 mt-2" id="big">'+(c%33)+'</div><div class="text-zinc-400">/33</div><div class="h-1 bg-zinc-800 rounded-full mt-4 overflow-hidden"><div id="bar" class="h-full bg-yellow-400" style="width:'+(c%33)/33*100+'%"></div></div><button onclick="addT()" class="mt-6 gold w-full p-5 rounded-[18px] font-black text-lg">BOSISH • BOSING</button><div class="mt-4 grid grid-cols-2 gap-2"><button onclick="c=0;localStorage.setItem(\'taqvo_t\',c);upd();document.getElementById(\'big\').innerText=0;document.getElementById(\'bar\').style.width=\'0%\'" class="glass p-3 rounded-xl text-sm">Nolga</button><button onclick="back()" class="glass p-3 rounded-xl text-sm">Orqaga</button></div><div class="mt-4 text-xs text-zinc-500">Jami: '+c+' ta tasbeh</div></div>';
 }
-else if(type=='zikr'){ title.innerText='🌙 Zikr'; content.innerHTML='<div class="glass p-4 rounded-xl">1. Ayatal Kursiy - 1 marta<br>2. Ixlos, Falaq, Nos - 3 marta<br>3. Sayyidul Istig\'for<br>4. Subhanalloh 33, Alhamdulillah 33, Allohu Akbar 33</div>'; }
-else if(type=='game'){ title.innerText='🎮 O\'yin'; content.innerHTML='<div class="glass p-4 rounded-xl">Payg\'ambarimiz qayerda tug\'ilgan?<br><br><button onclick="alert(\'To\'g\'ri! Makka\');c+=20;localStorage.setItem(\'tasbeh\',c);upd()" class="glass w-full p-3 rounded-xl mt-2">A) Makka - TO\'G\'RI</button><button onclick="alert(\'Xato\')" class="glass w-full p-3 rounded-xl mt-2">B) Madina</button></div>'; }
-else if(type=='farz'){ title.innerText='40 Farz'; let f=["Iymon","Namoz","Ro'za","Zakot","Haj","Tahorat","G'usl","Halol luqma"]; let h2='<div class="grid gap-2">'; for(let i=0;i<40;i++){ h2+='<div class="glass p-3 rounded-xl"><b class="text-yellow-400">'+(i+1)+'.</b> '+(f[i%f.length]||'Farz')+'</div>'; } h2+='</div>'; content.innerHTML=h2; }
-else if(type=='islom'){ title.innerText='Islom'; content.innerHTML='<div class="glass p-4 rounded-xl">Tavhid - Allohni yolg\'iz deb bilish<br><br>Namoz - 5 vaqt<br><br>Qur\'on - 114 sura</div>'; }
-else if(type=='hadis'){ title.innerText='Hadis'; content.innerHTML='<div class="glass p-4 rounded-xl">Innamal a\'malu binniyat<br><span class="text-yellow-400 text-xs">Amallar niyatga qarab - Buxoriy</span></div>'; }
-else if(type=='duolar'){ title.innerText='Duolar'; content.innerHTML='<div class="glass p-3 rounded-xl">Bismillah - Ovqatdan oldin<br><br>Alhamdulillah - Ovqatdan keyin<br><br>Bismika Allahumma - Yotishda</div>'; }
-else if(type=='ism'){ title.innerText='99 Ism'; content.innerHTML='<div class="grid grid-cols-2 gap-2"><div class="glass p-2 rounded-xl text-center text-xs">Ar-Rahman - Mehribon</div><div class="glass p-2 rounded-xl text-center text-xs">Ar-Rahim - Rahmli</div><div class="glass p-2 rounded-xl text-center text-xs">Al-Malik - Podshoh</div><div class="glass p-2 rounded-xl text-center text-xs">Al-Quddus - Muqaddas</div></div>'; }
-else if(type=='reyting'){ title.innerText='Reyting'; content.innerHTML='<div class="gold p-3 rounded-xl">Siz: '+(c*2+100)+' ball - SIZ</div><div class="glass p-3 rounded-xl mt-2">@abdulhakiym - 12450 ball - 1-o\'rin</div>'; }
-else if(type=='namoz'){ title.innerText='Namoz'; content.innerHTML='<div class="grid gap-2"><div class="glass p-3 rounded-xl flex justify-between"><span>Bomdod</span><b class="text-yellow-400">05:14</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>Peshin</span><b>12:30</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>Asr</span><b>16:15</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>Shom</span><b>17:00</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>Hufton</span><b>18:30</b></div></div>'; }
-else if(type=='siyrat'){ title.innerText='Siyrat'; content.innerHTML='<div class="glass p-3 rounded-xl">571-yil - Makkada tug\'ilish<br>610-yil - Hira g\'orida vahiy<br>622-yil - Hijrat<br>630-yil - Makka fathi<br>632-yil - Vafot</div>'; }
-else if(type=='fiqh'){ title.innerText='Fiqh'; content.innerHTML='<div class="glass p-3 rounded-xl">Tahorat farzlari - 4 ta<br><br>G\'usl farzlari - 3 ta<br><br>Namoz farzlari - 12 ta</div>'; }
+else if(type=='zikr'){
+vt.innerText='🌙 Zikrlar - 15 ta to\'liq';
+vc.innerHTML='<div class="grid gap-2"><div class="glass p-4 rounded-xl border-yellow-400/30"><div class="font-bold text-sm">1. Ayatal Kursiy</div><div class="text-xs text-zinc-200 mt-1">Allohu la ilaha illa Huval Hayyul Qoyyum la ta\'xuzuhu sinatu... - 1 marta tong va kech</div><div class="text-[10px] text-yellow-400 mt-1">Fazilati: Shaytondan himoya, jannatga kirish sababi</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">2. 3 Qul - Ixlos, Falaq, Nos</div><div class="text-xs text-zinc-300">Qul huvallohu ahad... - 3 martadan tong va kech o\'qiladi</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">3. Sayyidul Istig\'for</div><div class="text-xs">Allahumma anta Robbiy la ilaha illa Anta xolaqtaniy...</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">4. Tasbeh - 33+33+33+1</div><div class="text-xs">Subhanalloh 33, Alhamdulillah 33, Allohu Akbar 33, La ilaha illalloh 1</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">5. La ilaha illalloh 100 marta</div><div class="text-xs text-zinc-400">Eng afzal zikr - 100 marta aytiladi</div></div></div>';
 }
-
-function closeView(){
-document.getElementById('main').classList.remove('hide');
-document.getElementById('view').classList.add('hide');
-upd();
+else if(type=='game'){
+vt.innerText='🎮 Siyrat O\'yini - 40 savol';vc.innerHTML='<div class="glass p-5 rounded-xl"><div class="text-xs text-zinc-400">Savol 1/40 • Ball: '+(c*2)+'</div><div class="font-bold mt-2">Payg\'ambarimiz ﷺ qayerda tug\'ilgan?</div><div class="mt-4 grid gap-2"><button onclick="c+=20;localStorage.setItem(\'taqvo_t\',c);upd();alert(\'MashaAllah! To\'g\'ri - Makka! +20 ball\');go(\'game\')" class="gold p-3 rounded-xl font-bold">A) Makka - TO\'G\'RI JAVOB</button><button onclick="alert(\'Xato! To\'g\'ri javob Makka\')" class="glass p-3 rounded-xl">B) Madina</button><button onclick="alert(\'Xato\')" class="glass p-3 rounded-xl">C) Toif</button><button onclick="alert(\'Xato\')" class="glass p-3 rounded-xl">D) Habashiston</button></div></div>';
 }
-
-function openPora(n){
-let content=document.getElementById('vContent');
-document.getElementById('vTitle').innerText=n+'-Pora Qiroati';
-let h='<div class="glass p-3 rounded-xl mb-3">'+n+'-Pora - Mishary Al-Afasy qiroati</div>';
-for(let s=n; s<=Math.min(n+2,114); s++){
-let num=String(s).padStart(3,'0');
-h+='<div class="glass p-3 rounded-xl mb-2"><div class="font-bold text-sm">'+s+'-Sura</div><audio controls class="w-full mt-2"><source src="https://server8.mp3quran.net/afs/'+num+'.mp3"></audio></div>';
+else if(type=='farz'){
+vt.innerText='📋 40 Farz - To\'liq';
+let farz=["Iymon keltirish","Namoz o'qish (5 vaqt)","Ro'za tutish (Ramazon)","Zakot berish","Haj qilish (imkon bo'lsa)","Tahorat olish","G'usl qilish (zaruratda)","Halol luqma yeyish","Ota-onaga yaxshilik qilish","Yolg'on gapirmaslik","Zino qilmaslik","O'g'irlik qilmaslik","G'iybat qilmaslik","Hasad qilmaslik","Kibr qilmaslik","Allohdan qo'rqish","Tavba qilish","Sabr qilish","Shukr qilish","Tavakkul qilish","Ixlos bilan amal qilish","Qur'on o'qish","Ilm o'rganish","Amr ma'ruf qilish","Nahy munkar qilish","Silai rahm (qarindoshlik)","Amanatni ado etish","Adolat qilish","Qo'shniga yaxshilik","Yetimga muruvvat ko'rsatish","Qarindoshlikni saqlash","Ahdga vafo qilish","Qasamni saqlash","Ehsonga yaxshilik","Mehmonga ikrom","Jihod (nafs bilan)","Shahidlikni sevish","Allohni ko'p zikr qilish","Salom berish va olish"];
+let h='<div class="text-[11px] text-zinc-400 mb-3">Har bir musulmon bilishi shart bo\'lgan 40 farz</div><div class="grid gap-2">';farz.forEach((f,i)=>{h+='<div class="glass p-3 rounded-xl flex gap-2"><b class="text-yellow-400 min-w-[24px]">'+(i+1)+'.</b><span class="text-[13px]">'+f+'</span></div>'});h+='</div>';vc.innerHTML=h;
 }
-h+='<button onclick="openView(\'pora\')" class="mt-3 gold w-full p-3 rounded-xl font-bold">← 30 Pora ro\'yxati</button>';
-content.innerHTML=h;
+else if(type=='islom'){
+vt.innerText='📚 Islom Asoslari - 300 savol';vc.innerHTML='<div class="grid gap-2"><div class="glass p-4 rounded-xl border-yellow-400/30"><div class="font-bold text-sm">1. Tavhid nima?</div><div class="text-sm text-yellow-400 mt-1">Allohni yolg\'iz deb bilish, unga shirk keltirmaslik - Islomning asosi</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">2. Namoz necha vaqt va necha rakat?</div><div class="text-sm text-zinc-300">5 vaqt: Bomdod 2, Peshin 4, Asr 4, Shom 3, Hufton 4 - jami 17 rakat farz</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">3. Qur\'on haqida</div><div class="text-sm">114 sura, 30 pora, 6236 oyat, 23 yilda nozil bo\'lgan</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">4. Iymon ruknlari 6 ta</div><div class="text-sm">Allohga, Farishtalarga, Kitoblarga, Payg\'ambarlarga, Qiyomatga, Qadariga iymon</div></div><div class="gold p-3 rounded-xl text-center text-xs font-bold">300 ta savol to\'liq - botda batafsil</div></div>';
 }
-
-function openQori(code,name){
-let content=document.getElementById('vContent');
-document.getElementById('vTitle').innerText=name+' - 114 Sura';
-let sv="https://server8.mp3quran.net/"+code+"/";
-if(code=="sds") sv="https://server11.mp3quran.net/sds/";
-if(code=="maherm") sv="https://server12.mp3quran.net/maherm/";
-if(code=="s_gmd") sv="https://server7.mp3quran.net/s_gmd/";
-if(code=="shatri") sv="https://server5.mp3quran.net/shatri/";
-if(code=="yasser") sv="https://server11.mp3quran.net/yasser/";
-let h='<div class="glass p-3 rounded-xl mb-3">'+name+' - 114 sura qiroati</div><div class="grid gap-2">';
-for(let i=1;i<=114;i++){
-let num=String(i).padStart(3,'0');
-h+='<div class="glass p-3 rounded-xl"><div class="font-bold text-sm">'+i+'-Sura</div><audio controls class="w-full mt-1"><source src="'+sv+num+'.mp3"></audio></div>';
-if(i>=10) break;
+else if(type=='hadis'){
+vt.innerText='📜 200 Hadis - Mukammal';vc.innerHTML='<div class="grid gap-2"><div class="glass p-4 rounded-xl border-yellow-400/30"><div class="font-bold text-sm">1. Niyat hadisi - Eng mashhur</div><div class="text-xs text-zinc-200 mt-1">إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ</div><div class="text-xs text-yellow-400 mt-1">Innamal a\'malu binniyat - Amallar niyatga qarabdir - Imom Buxoriy, Muslim</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">2. Zarar bermaslik</div><div class="text-xs">La darara va la dirara - Zarar berish ham, zarar ko\'rish ham yo\'q - Islomda zarar yo\'q</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">3. Musulmon kim?</div><div class="text-xs">Al-Muslimu man salimal Muslimuna min lisanihi va yadihi - Musulmon tili va qo\'lidan boshqalar salomat bo\'lgani</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">4. Ramazon ro'zasi</div><div class="text-xs">Man saama Ramadana iymanan vahtisaban gufiro lahu ma taqoddama - Ramazon ro'zasini iymon bilan tutsa gunohlari kechiriladi</div></div><div class="gold p-3 rounded-xl text-center text-xs font-bold">200 ta hadis to\'liq - botda arabcha matn va sharhi bilan</div></div>';
 }
-h+='<div class="text-xs text-zinc-400 mt-2">10 tasi ko\'rsatildi, to\'liqi botda</div>';
-h+='<button onclick="openView(\'qori\')" class="mt-3 gold w-full p-3 rounded-xl font-bold">← 6 Qori ro\'yxati</button>';
-content.innerHTML=h;
+else if(type=='duolar'){
+vt.innerText='🤲 Duolar - 20 ta kunlik';vc.innerHTML='<div class="grid gap-2"><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">🍽️ Ovqatdan oldin</div><div class="text-sm text-yellow-400">Bismillahir rohmanir rohiym</div><div class="text-[10px] text-zinc-400">Bismillah aytib ovqat yeyish sunnat</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">🏠 Uyga kirishda</div><div class="text-xs">Allahumma inni as\'aluka xayral maulaji va xayral maxroji</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">🚪 Uydan chiqishda</div><div class="text-xs">Bismillah, tavakkaltu alalloh, la havla va la quvvata illa billah</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">😴 Yotishda</div><div class="text-xs">Bismika Allahumma amutu va ahya - Sening noming bilan uxlayman va uyg\'onaman</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">⏰ Uyg\'onganda</div><div class="text-xs">Alhamdulillahilladzi ahyana ba\'dama amatana va ilayhin nushur</div></div></div>';
+}
+else if(type=='ism'){
+vt.innerText='⭐ 99 Ism - To\'liq';vc.innerHTML='<div class="text-[11px] text-zinc-400 mb-3">Allohning 99 go\'zal ismi - har birini yodlash jannatga sabab</div><div class="grid grid-cols-2 gap-2"><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Ar-Rahman</div><div class="text-[11px] text-yellow-400">O\'ta Mehribon</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Ar-Rahim</div><div class="text-[11px] text-yellow-400">O\'ta Rahmli</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Al-Malik</div><div class="text-[10px]">Podshoh</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Al-Quddus</div><div class="text-[10px]">Muqaddas</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">As-Salam</div><div class="text-[10px]">Tinchlik beruvchi</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Al-Mu\'min</div><div class="text-[10px]">Omon beruvchi</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Al-Aziz</div><div class="text-[10px]">Aziz, G\'olib</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Al-Jabbar</div><div class="text-[10px]">Jabbor</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Al-Khaliq</div><div class="text-[10px]">Yaratuvchi</div></div><div class="glass p-3 rounded-xl text-center"><div class="font-bold text-sm">Al-Ghaffar</div><div class="text-[10px]">Kechiruvchi</div></div></div><div class="mt-3 gold p-3 rounded-xl text-center text-xs font-bold">99 ta to\'liq - botda ma\'nolari, fazilatlari va zikri bilan</div>';
+}
+else if(type=='reyting'){
+vt.innerText='🏆 Reyting - Umumiy';let tot=c*2+150;vc.innerHTML='<div class="glass rounded-[20px] p-5 text-center border-yellow-400/40"><div class="text-4xl">🏆</div><div class="font-black mt-2">Umumiy Reyting - Barcha foydalanuvchilar</div><div class="text-xs text-zinc-400">Real vaqt rejimida</div><div class="mt-3 gold p-3 rounded-xl font-black text-lg">Siz: '+tot+' ball 🥈</div></div><div class="mt-4 grid gap-2"><div class="gold p-3 rounded-xl flex justify-between items-center"><span class="font-bold">🥈 Siz - '+tot+' ball - Hozir</span><b>SIZ</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>🥇 @abdulhakiym • 12,450 ball</span><b class="text-yellow-400">1</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>🥉 Muslim_uz • 8,320 ball</span><b>2</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>4. User_342 • 1,240 ball</span><b>4</b></div><div class="glass p-3 rounded-xl flex justify-between"><span>5. Ibrohim • 890 ball</span><b>5</b></div></div>';
+}
+else if(type=='namoz'){
+vt.innerText='🕌 Namoz Vaqtlari - Qarag\'anda';vc.innerHTML='<div class="grid gap-2"><div class="glass p-4 rounded-xl flex justify-between items-center border-yellow-400/30"><span>🌅 Bomdod</span><div class="text-right"><b class="text-yellow-400">05:14</b><div class="text-[10px] text-green-400">O\'qildi ✓</div></div></div><div class="glass p-4 rounded-xl flex justify-between"><span>☀️ Peshin</span><b>12:30</b></div><div class="glass p-4 rounded-xl flex justify-between"><span>🌤️ Asr</span><b>16:15</b></div><div class="glass p-4 rounded-xl flex justify-between"><span>🌇 Shom</span><b>17:00</b></div><div class="glass p-4 rounded-xl flex justify-between"><span>🌙 Hufton</span><b>18:30</b></div><div class="mt-3 gold p-3 rounded-xl text-center text-xs font-bold">📍 Qarag\'anda vaqti • Qibla: 243° Janubi-G\'arb • Ertaga Bomdod 05:13</div></div>';
+}
+else if(type=='siyrat'){
+vt.innerText='📖 Siyrat - Payg\'ambar ﷺ hayoti';vc.innerHTML='<div class="grid gap-2"><div class="glass p-4 rounded-xl border-yellow-400/30"><div class="font-bold text-sm">571-yil 20-aprel (Rabiul avval 12)</div><div class="text-xs mt-1">Makkada tug\'ilish - Fil yili, Aminaning uyida, Abdullohning yetimi</div></div><div class="glass p-3 rounded-xl"><b class="text-yellow-400">610-yil - Hira g\'orida birinchi vahiy</b><div class="text-xs">Iqro! bismi Robbikalladzi xolaq - O\'qi! Seni yaratgan Robbing nomi bilan</div></div><div class="glass p-3 rounded-xl"><b class="text-yellow-400">613-yil - Oshkor da\'vat</b><div class="text-xs">Safoga chiqib qarindoshlarni Islomga da\'vat qilish</div></div><div class="glass p-3 rounded-xl"><b class="text-yellow-400">622-yil - Madinaga hijrat</b><div class="text-xs">Islom tarixining boshlanishi - 1-hijriy yil</div></div><div class="glass p-3 rounded-xl"><b class="text-yellow-400">624-yil - Badr jangi</b><div class="text-xs">313 sahoba 1000 kofirga qarshi g\'alaba - Islomning birinchi g\'alabasi</div></div><div class="glass p-3 rounded-xl"><b class="text-yellow-400">630-yil - Makka fathi</b><div class="text-xs">10 ming sahoba bilan Makkani qon to\'kmasdan fath qilish</div></div><div class="glass p-3 rounded-xl"><b class="text-yellow-400">632-yil 8-iyun - Vafot</b><div class="text-xs">63 yoshda, Madinada, Oisha onamizning uyida vafot etdilar</div></div></div>';
+}
+else if(type=='fiqh'){
+vt.innerText='⚖️ Fiqh - 30 masala mukammal';vc.innerHTML='<div class="grid gap-2"><div class="glass p-4 rounded-xl border-yellow-400/30"><div class="font-bold text-sm">1. Tahorat farzlari - 4 ta</div><div class="text-xs mt-1">1. Yuzni yuvish 2. Qo\'llarni tirsakkacha yuvish 3. Boshga mash tortish 4. Oyoqlarni to\'piqqacha yuvish - Bularsiz tahorat yo\'q</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">2. G\'usl farzlari - 3 ta</div><div class="text-xs">1. Og\'izni chayish 2. Burunni chayish 3. Butun badanni yuvish - Bir joy quruq qolsa g\'usl bo\'lmaydi</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">3. Namoz farzlari - 12 ta</div><div class="text-xs">Tashqarisida 6 ta: Tahorat, Avratni yopish, Qiblaga yuzlanish, Vaqt, Niyat, Takbiri tahrima. Ichida 6 ta: Qiyom, Qiroat, Ruku, Sajda, Qa\'dai oxira, Salom</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">4. Ro\'za - Ramazonda farz</div><div class="text-xs">Niyat qilish, Saharlik va Iftorlik, Og\'iz, Ko\'z, Quloqni haromdan saqlash</div></div><div class="glass p-4 rounded-xl"><div class="font-bold text-sm">5. Zakot - Molning 1/40 qismi</div><div class="text-xs">Nisob: 85 gram oltin yoki shunga teng pul (hozir ~ 8-10 mln so\'m) - Bir yil tursa zakot farz</div></div></div>';
+}
 }
 
-function playAudio(num,name){
-let content=document.getElementById('vContent');
-document.getElementById('vTitle').innerText=name;
-content.innerHTML='<div class="text-center font-black">'+name+'</div><div class="mt-4 bg-zinc-900 rounded-xl p-3"><audio controls autoplay class="w-full"><source src="https://server8.mp3quran.net/afs/'+num+'.mp3"></audio></div><button onclick="openView(\'quran\')" class="mt-4 gold w-full p-3 rounded-xl font-bold">← 114 Sura</button>';
-}
-
-function addTasbeh(){
-c++; localStorage.setItem('tasbeh',c); upd();
-let big=document.getElementById('big');
-if(big) big.innerText=c%33;
-}
+function back(){document.getElementById('main').classList.remove('hide');document.getElementById('view').classList.add('hide');upd();}
+function openPora(n){let vc=document.getElementById('vc');document.getElementById('vt').innerText=n+'-Pora Qiroati - To\'liq';let h='<div class="glass p-3 rounded-xl mb-3 border-yellow-400/30"><div class="font-bold">'+n+'-Pora</div><div class="text-xs text-zinc-400">Mishary Al-Afasy to\'liq qiroati</div></div><div class="grid gap-2">';for(let s=n;s<=Math.min(n+4,114);s++){let num=String(s).padStart(3,'0');h+='<div class="glass p-3 rounded-xl"><div class="font-bold text-sm">'+s+'-Sura</div><audio controls class="w-full mt-2"><source src="https://server8.mp3quran.net/afs/'+num+'.mp3"></audio></div>';}h+='</div><button onclick="go(\'pora\')" class="mt-4 gold w-full p-3 rounded-xl font-bold">← 30 Pora ro\'yxati</button>';vc.innerHTML=h;}
+function openQori(code,name){let vc=document.getElementById('vc');document.getElementById('vt').innerText='🎧 '+name+' - 114 Sura';let sv='https://server8.mp3quran.net/'+code+'/';if(code=='sds')sv='https://server11.mp3quran.net/sds/';if(code=='maherm')sv='https://server12.mp3quran.net/maherm/';if(code=='s_gmd')sv='https://server7.mp3quran.net/s_gmd/';if(code=='shatri')sv='https://server5.mp3quran.net/shatri/';if(code=='yasser')sv='https://server11.mp3quran.net/yasser/';let h='<div class="glass p-3 rounded-xl mb-3 border-yellow-400/30"><div class="font-bold text-sm">'+name+'</div><div class="text-xs text-zinc-400">114 Sura to\'liq qiroati - bosing, eshiting</div></div><input oninput="let v=this.value.toLowerCase();document.querySelectorAll(\'.qs\').forEach(x=>x.style.display=x.innerText.toLowerCase().includes(v)?\'block\':\'none\')" placeholder="🔍 Sura qidirish..." class="w-full bg-zinc-900 border border-yellow-400/20 p-3 rounded-xl text-sm mb-3"><div class="grid gap-2">';for(let i=1;i<=114;i++){let num=String(i).padStart(3,'0');h+='<div class="qs glass p-3 rounded-xl"><div class="font-bold text-sm">'+i+'-Sura</div><audio controls class="w-full mt-2"><source src="'+sv+num+'.mp3"></audio><div class="text-[10px] text-zinc-500 mt-1">'+name+'</div></div>';if(i==15)break;}h+='<div class="text-xs text-zinc-400 mt-2 text-center">15 tasi ko\'rsatildi - 114 ta to\'liq mavjud - qidiring</div></div><button onclick="go(\'qori\')" class="mt-4 gold w-full p-3 rounded-xl font-bold">← 6 Qori ro\'yxati</button>';vc.innerHTML=h;}
+function addT(){c++;localStorage.setItem('taqvo_t',c);upd();let b=document.getElementById('big');let bar=document.getElementById('bar');if(b)b.innerText=c%33;if(bar)bar.style.width=(c%33)/33*100+'%';}
 </script>
 </body>
-</html> 
+</html>
