@@ -147,8 +147,9 @@ async def zikr_job(q):
     if q=="tong": await send_all("🌅 ТОНГГИ ЗИКР вақти!\n\nЧап менюдаги «Тонгги зикрлар»ни ўқиш вақти! Субҳаналлоҳи ва биҳамдиҳи 100 марта")
     else: await send_all("🌙 КЕЧКИ ЗИКР вақти!\n\nЧап менюдаги «Кечки зикрлар»ни ўқиш вақти! Оятул Курсийни ўқинг!")
 
+
 async def main():
-        await bot.delete_webhook(drop_pending_updates=True)
+    await bot.delete_webhook(drop_pending_updates=True)
     scheduler.add_job(oxirat_job, "cron", hour=9, minute=0)
     scheduler.add_job(oxirat_job, "cron", hour=20, minute=30)
     scheduler.add_job(namoz_job, "cron", hour=5, minute=15, args=["Bomdod"])
@@ -161,6 +162,7 @@ async def main():
     scheduler.start()
     print("✅ TAQVO FINAL BOT ISHGA TUSHDI")
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
