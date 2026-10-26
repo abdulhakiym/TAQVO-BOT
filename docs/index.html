@@ -1,163 +1,96 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#050507">
-  <meta name="description" content="TAQVO PRO MAX — Qur'on, zikr, namoz vaqtlari, hadislar va islomiy bilimlar.">
-  <title>TAQVO PRO MAX</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    :root {
-      --bg:#050507; --panel:#101014; --panel2:#17171d;
-      --gold:#ffd700; --text:#f7f4eb; --muted:#a4a1a8;
-      --border:rgba(255,215,0,.18); --green:#8dd7a2;
-    }
-    * { box-sizing:border-box }
-    body {
-      margin:0; background:radial-gradient(ellipse at top,#211b0b 0,#09090c 38%,var(--bg) 75%);
-      color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      min-height:100vh;
-    }
-    button,input,select { font:inherit }
-    button { cursor:pointer }
-    .app { max-width:440px; margin:auto; min-height:100vh; padding:16px 15px 40px }
-    .top { display:flex; justify-content:space-between; align-items:center; gap:12px }
-    .brand { font-size:20px; font-weight:900; letter-spacing:1px }
-    .brand span { color:var(--gold) }
-    .sub { color:var(--muted); font-size:12px; margin-top:5px }
-    .pill {
-      color:var(--gold); border:1px solid var(--border); border-radius:99px;
-      padding:9px 11px; background:#16130b; font-size:12px;
-    }
-    .hero {
-      margin-top:20px; border:1px solid var(--border); border-radius:24px;
-      padding:21px; background:linear-gradient(140deg,#211b0d,#121216 65%);
-      box-shadow:0 15px 50px #0006;
-    }
-    .eyebrow { color:var(--gold); font-size:11px; letter-spacing:2px; font-weight:800 }
-    h1 { font-size:27px; line-height:1.2; margin:10px 0 }
-    p { line-height:1.6 }
-    .muted { color:var(--muted) }
-    .section-title { font-size:17px; font-weight:800; margin:24px 0 12px }
-    .prayers { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:18px }
-    .prayer { padding:11px 2px; text-align:center; border-radius:13px; background:#ffffff08; border:1px solid #ffffff0d }
-    .prayer b { display:block; font-size:11px }
-    .prayer span { display:block; margin-top:7px; color:var(--gold); font-size:12px }
-    .location { display:flex; gap:8px; margin-top:13px }
-    select,.search {
-      width:100%; min-width:0; color:var(--text); background:#19191f;
-      border:1px solid #ffffff18; border-radius:12px; padding:12px;
-    }
-    .gold-btn {
-      border:0; border-radius:12px; padding:12px 15px; color:#151106;
-      font-weight:800; background:linear-gradient(135deg,#ffe98b,#ffd700);
-    }
-    .outline-btn {
-      border:1px solid var(--border); border-radius:12px; padding:11px;
-      color:var(--gold); background:#17140b;
-    }
-    .quick { display:grid; grid-template-columns:1fr 1fr; gap:10px }
-    .quick button { text-align:left; padding:15px; border-radius:17px; color:var(--text); background:var(--panel); border:1px solid #ffffff12 }
-    .quick strong { display:block; margin-bottom:6px }
-    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px }
-    .tile {
-      min-height:116px; padding:15px; text-align:left; color:var(--text);
-      background:linear-gradient(145deg,#18181e,#0e0e12);
-      border:1px solid #ffffff12; border-radius:18px;
-      transition:transform .15s,border-color .15s;
-    }
-    .tile:active { transform:scale(.98) }
-    .tile .emoji { font-size:25px; display:block; margin-bottom:12px }
-    .tile b { font-size:13px; line-height:1.4; display:block }
-    .tile small { display:block; margin-top:7px; font-size:11px; color:var(--muted); line-height:1.4 }
-    .panel { background:var(--panel); border:1px solid #ffffff12; border-radius:18px; padding:16px; margin-top:12px }
-    .item { padding:14px 0; border-bottom:1px solid #ffffff10 }
-    .item:last-child { border-bottom:0 }
-    .arabic { font-family:"Times New Roman",serif; direction:rtl; text-align:right; font-size:26px; line-height:1.9; margin:14px 0 }
-    .counter { text-align:center; padding:20px }
-    .count { color:var(--gold); font-size:48px; font-weight:900; margin:14px }
-    .count-btn { width:150px; height:150px; border-radius:50%; border:2px solid var(--gold); color:var(--gold); background:#1c180a; font-size:23px; font-weight:800 }
-    .back { margin-top:20px; margin-bottom:10px }
-    .hidden { display:none!important }
-    .note { border-radius:12px; background:#19160c; color:#dfd3a5; padding:12px; font-size:12px; line-height:1.6 }
-    footer { margin-top:35px; text-align:center; color:var(--muted); font-size:12px; line-height:2 }
-    footer a { color:var(--gold); text-decoration:none }
-    .medal { font-size:22px }
-    @media(min-width:441px) { .app { border-left:1px solid #ffffff0b; border-right:1px solid #ffffff0b } }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050507">
+<meta name="description" content="TAQVO PRO MAX — Qur'on, zikr, hadis, namoz va islomiy bilimlar">
+<title>TAQVO PRO MAX</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#050507;--card:#111116;--gold:#ffd700;--muted:#aaa7b2;--line:#29272d;--soft:#1b1910}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f8f6ef;font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:480px;margin:auto;padding:calc(14px + env(safe-area-inset-top)) 15px calc(30px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-weight:900;letter-spacing:1.2px;font-size:19px}.brand span{color:var(--gold)}
+.small{font-size:12px;color:var(--muted)}
+button,select,input,textarea{border-radius:13px}
+.btn{padding:11px 14px;border:1px solid var(--line);background:#18171c;color:#fff}
+.gold{background:var(--gold);color:#151208;border:0;font-weight:800}
+.hero{margin-top:18px;padding:20px;border:1px solid #5b4b11;border-radius:23px;background:radial-gradient(ellipse at top right,#34290c,#121116 65%)}
+.kicker{font-size:11px;color:var(--gold);letter-spacing:2px;font-weight:800}
+h1{font-size:27px;line-height:1.2;margin:10px 0}h2{font-size:22px;margin:8px 0 14px}h3{font-size:17px;margin:10px 0}
+.muted{color:var(--muted)}
+.section-title{font-weight:850;font-size:18px;margin:24px 0 12px}
+.prayers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:16px 0}
+.prayer{padding:9px 2px;text-align:center;background:#ffffff08;border:1px solid #ffffff10;border-radius:12px}
+.prayer b{font-size:10px;display:block}.prayer span{font-size:12px;color:var(--gold);display:block;margin-top:5px}
+.row{display:flex;gap:8px;align-items:center}.row>*{min-width:0}
+select,input,textarea{width:100%;padding:12px;color:#fff;background:#19191f;border:1px solid var(--line)}
+.hero .row{margin-top:10px}
+.quick,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.quick button,.tile{color:#fff;text-align:left;background:linear-gradient(145deg,#19191f,#0e0e12);border:1px solid var(--line);border-radius:17px;padding:14px}
+.quick strong{display:block}.tile{min-height:120px}.tile .emoji{font-size:25px;display:block;margin-bottom:9px}.tile b{display:block;font-size:13px;line-height:1.4}.tile small{display:block;margin-top:6px;color:var(--muted);font-size:11px}
+.panel{margin-top:12px;padding:17px;border:1px solid var(--line);background:var(--card);border-radius:20px}
+.hidden{display:none!important}.item{padding:13px 0;border-bottom:1px solid #ffffff12}.item:last-child{border:0}
+.arabic{direction:rtl;text-align:right;font-family:"Times New Roman",serif;font-size:27px;line-height:2;margin:14px 0}
+.note{background:var(--soft);border:1px solid #453b13;border-radius:13px;padding:13px;color:#e9ddb1;font-size:13px}
+.counter{text-align:center;padding:18px 0}.count{font-size:48px;color:var(--gold);font-weight:900}
+.count-btn{width:145px;height:145px;border-radius:50%;border:3px solid var(--gold);background:#201a08;color:var(--gold);font-weight:900;font-size:21px}
+.list-btn{display:block;width:100%;text-align:left;margin:7px 0;padding:14px;border:1px solid var(--line);background:#17171c;color:white;border-radius:13px}
+a{color:var(--gold)}audio{width:100%;margin:12px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;line-height:2;margin:35px 0 8px}
+@media(min-width:481px){.app{border-left:1px solid #151519;border-right:1px solid #151519}}
+</style>
 </head>
 <body>
 <div class="app">
-  <header class="top">
-    <div>
-      <div class="brand">TAQVO <span>PRO MAX</span></div>
-      <div class="sub" id="greeting">Qalbingizni ilm va zikr bilan yoritинг</div>
-    </div>
-    <button class="pill" id="languageBtn">LOTIN / КИРИЛЛ</button>
-  </header>
+<header>
+  <div><div class="brand">TAQVO <span>PRO MAX</span></div><div class="small" id="greeting">Ilm • Ibodat • Taqvo</div></div>
+  <button class="btn" id="language">Кирилл</button>
+</header>
 
-  <section class="hero">
-    <div class="eyebrow">ILM • IBODAT • TAQVO</div>
-    <h1 id="heroTitle">Allohni zikr qilish bilan qalblar orom topadi.</h1>
-    <p class="muted" id="heroDesc">Qur’on, sahih zikrlar va islomiy bilimlar — bir joyda.</p>
-    <div class="section-title" id="prayerTitle">Namoz vaqtlari</div>
-    <div class="prayers" id="prayers">
-      <div class="prayer"><b>Bomdod</b><span>--:--</span></div>
-      <div class="prayer"><b>Peshin</b><span>--:--</span></div>
-      <div class="prayer"><b>Asr</b><span>--:--</span></div>
-      <div class="prayer"><b>Shom</b><span>--:--</span></div>
-      <div class="prayer"><b>Xufton</b><span>--:--</span></div>
-    </div>
-    <div class="location">
-      <select id="city">
-        <option value="Tashkent">Toshkent</option>
-        <option value="Samarkand">Samarqand</option>
-        <option value="Fergana">Farg‘ona</option>
-        <option value="Andijan">Andijon</option>
-        <option value="Bukhara">Buxoro</option>
-        <option value="Almaty">Olmaota</option>
-        <option value="Astana">Astana</option>
-        <option value="Karaganda">Qarag‘anda</option>
-        <option value="Bishkek">Bishkek</option>
-        <option value="Makkah">Makka</option>
-        <option value="Madinah">Madina</option>
-        <option value="Istanbul">Istanbul</option>
-        <option value="London">London</option>
-      </select>
-      <button class="gold-btn" id="cityBtn">Tanlash</button>
-    </div>
-    <p class="sub" id="prayerStatus">Namoz vaqtlari uchun server API ulanishi talab qilinadi.</p>
-  </section>
-
-  <div class="section-title" id="quickTitle">Tezkor kirish</div>
-  <div class="quick">
-    <button data-open="4"><strong>🌅 Tonggi zikrlar</strong><span class="sub">Zikr va tasbeh</span></button>
-    <button data-open="4"><strong>🌙 Kechki zikrlar</strong><span class="sub">Kechki zikrlar to‘plami</span></button>
+<section class="hero">
+  <div class="kicker">QALBGA NUR</div>
+  <h1 id="heroTitle">Qur’on va zikr bilan qalbni yoritинг</h1>
+  <div class="muted" id="heroDesc">Ishonchli manbalar va foydali ibodatlar bir joyda.</div>
+  <div class="section-title" id="prayerHeading">Namoz vaqtlari</div>
+  <div class="prayers" id="prayers">
+    <div class="prayer"><b>Bomdod</b><span>--:--</span></div><div class="prayer"><b>Peshin</b><span>--:--</span></div><div class="prayer"><b>Asr</b><span>--:--</span></div><div class="prayer"><b>Shom</b><span>--:--</span></div><div class="prayer"><b>Xufton</b><span>--:--</span></div>
   </div>
+  <div class="row"><input id="city" value="Tashkent" aria-label="Shahar nomi" placeholder="Shahar nomi"><button class="btn gold" id="loadPrayer">Vaqtlar</button></div>
+  <div class="small" id="prayerStatus">Shahar nomini kiriting va vaqtlarni yangilang.</div>
+</section>
 
-  <div class="section-title" id="allTitle">Barcha bo‘limlar</div>
-  <input class="search" id="search" placeholder="Bo‘limlarni qidirish...">
-  <div class="grid" id="sections"></div>
-
-  <section id="detail" class="hidden">
-    <button class="outline-btn back" id="back">← Bosh sahifaga qaytish</button>
-    <div class="panel">
-      <div class="eyebrow" id="detailNumber">TAQVO PRO MAX</div>
-      <h2 id="detailTitle"></h2>
-      <div id="detailContent"></div>
-    </div>
-  </section>
-
-  <footer>
-    <div>TAQVO PRO MAX • Ilm va ibodat sari</div>
-    <a href="https://t.me/hakiymqalb" target="_blank" rel="noopener">Telegram kanal</a>
-    <div><a id="instagramLink" href="#" target="_blank" rel="noopener">Instagram profilini sozlash kerak</a></div>
-    <div>Qur’on va hadis matnlari ishonchli manbalardan tekshirilishi lozim.</div>
-  </footer>
+<div class="section-title">Tezkor kirish</div>
+<div class="quick">
+  <button data-open="morning"><strong>🌅 Tonggi zikrlar</strong><span class="small">Zikrlar va tasbeh</span></button>
+  <button data-open="evening"><strong>🌙 Kechki zikrlar</strong><span class="small">Zikrlar va tasbeh</span></button>
 </div>
 
-<script src="./paket1.js"></script>
+<div class="section-title" id="allHeading">17 ta bo‘lim</div>
+<input id="search" placeholder="Bo‘limni qidirish..." aria-label="Bo‘limlarni qidirish">
+<div class="grid" id="menu"></div>
+
+<section id="page" class="hidden">
+  <button class="btn" id="back">← Bosh sahifa</button>
+  <div class="panel">
+    <div class="kicker" id="pageKicker">TAQVO PRO MAX</div>
+    <h2 id="pageTitle"></h2>
+    <div id="content"></div>
+  </div>
+</section>
+
+<footer>
+  TAQVO PRO MAX • Ilm va ibodat sari<br>
+  <a href="https://t.me/hakiymqalb" target="_blank" rel="noopener">Telegram kanal</a><br>
+  <a id="instagram" href="#" target="_blank" rel="noopener">Instagram havolasini sozlash kerak</a>
+</footer>
+</div>
+<script src="./paket1.js?v=3"></script>
 </body>
 </html>
