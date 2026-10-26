@@ -28,8 +28,8 @@ from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import BotCommand, MenuButtonWebApp, Message, WebAppInfo
 
 # ====================== SOZLAMALAR ======================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "BU_YERGA_BOT_TOKEN")
-CHANNEL = os.getenv("CHANNEL", "@kanal_username")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8327169780:AAEv-cE8mAB1OhFWTRZ08V9OSbpjDOk7wRA")
+CHANNEL = os.getenv("CHANNEL", "@hakiymqalb")
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://USERNAME.github.io/REPO/")
 AI_KEYS = [k.strip() for k in os.getenv("AI_KEYS", "").split(",") if k.strip()]
 AI_MODEL = os.getenv("AI_MODEL", "claude-haiku-5-5")
