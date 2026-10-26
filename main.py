@@ -33,7 +33,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("taqvo-bot")
 
-BOT_TOKEN = os.getenv("8327169780:AAEv-cE8mAB1OhFWTRZ08V9OSbpjDOk7wRA", "").strip()
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", "@hakiymqalb")
 CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/hakiymqalb")
 SITE_URL = os.getenv("SITE_URL", "https://abdulhakiym.github.io/TAQVO-BOT/")
