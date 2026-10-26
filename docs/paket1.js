@@ -1,6 +1,6 @@
 /* paket1.js — TAQVO tuzatishlari (to'liq fayl) */
 (function () {
-  const SERVER = "https://SERVER_MANZILI";   // bot serveringiz manzili: https:// bilan, oxirida / yo'q
+const SERVER = "https://taqvo-bot-api.onrender.com";
   const app = document.getElementById('app');
   app.style.visibility = 'hidden';
   CFG.API = SERVER;
