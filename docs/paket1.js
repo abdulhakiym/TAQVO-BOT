@@ -1,27 +1,28 @@
 
 "use strict";
 
+/* TAQVO PRO MAX — asosiy interfeys */
 const API = "https://taqvo-bot-api.onrender.com";
 const $ = id => document.getElementById(id);
 
 const MENU = [
- ["quran","📖","Qur’oni Karim","114 sura va o‘qish"],
+ ["quran","📖","Qur’oni Karim","114 sura"],
  ["recitation","🎧","Qur’on qiroatlari","Qorilar va audio"],
- ["tasbih","📿","Tasbeh","Zikr va sanoq"],
- ["morning","🌅","Tonggi zikrlar","Tonggi zikrlar to‘plami"],
- ["evening","🌙","Kechki zikrlar","Kechki zikrlar to‘plami"],
+ ["tasbih","📿","Tasbeh","Zikr sanagichi"],
+ ["morning","🌅","Tonggi zikrlar","Tonggi zikrlar"],
+ ["evening","🌙","Kechki zikrlar","Kechki zikrlar"],
  ["prayer","🕌","Namoz vaqtlari","Shahar bo‘yicha"],
- ["duas","🤲","Sahih duolar","Duo va ma’nolari"],
- ["hadith","📜","Hadislar","Hadislar to‘plami"],
- ["forty","☪️","Qirq farz","O‘rganish va yodlash"],
+ ["duas","🤲","Sahih duolar","Duolar va ma’nolari"],
+ ["hadith","📜","Hadislar","Hadislarni o‘rganish"],
+ ["forty","☪️","Qirq farz","O‘rganish"],
  ["duties","🧭","Asosiy burchlar","Diniy bilimlar"],
- ["foundations","🌿","Islom asoslari","Islomni o‘rganish"],
+ ["foundations","🌿","Islom asoslari","Asosiy bilimlar"],
  ["sirah","🕋","Payg‘ambarimiz ﷺ siyratlari","Siyrat bosqichlari"],
  ["quiz","🎯","Siyrat o‘yini","Savollar va ballar"],
  ["ranking","🏆","Reyting","Medallar va natijalar"],
- ["media","🎬","Islomiy kino va multfilmlar","Video manbalari"],
- ["ai","🤖","TAQVO AI","Islomiy savol-javob"],
- ["settings","🔤","Til va havolalar","Sozlamalar"]
+ ["media","🎬","Islomiy kino va multfilmlar","Ishonchli manbalar"],
+ ["ai","🤖","TAQVO AI","Savol-javob"],
+ ["settings","🔤","Til va sozlamalar","Lotin / Кирилл"]
 ];
 
 const ZIKR = [
@@ -32,167 +33,369 @@ const ZIKR = [
  {a:"لَا إِلَهَ إِلَّا اللَّهُ",t:"La ilaha illalloh",m:"Allohdan boshqa haq iloh yo‘q.",n:100,src:"Sahih Muslim 2691"}
 ];
 
-let cyr = false, zikrIndex = 0, zikrCount = 0, suras = [], quizIndex = 0, quizScore = 0, quizSet = [];
-
-function safe(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-
-function renderMenu(filter=""){
- $("menu").innerHTML="";
- MENU.filter(x=>(x[2]+" "+x[3]).toLowerCase().includes(filter.toLowerCase())).forEach(x=>{
-  const b=document.createElement("button"); b.className="tile";
-  b.innerHTML=`<span class="emoji">${x[1]}</span><b>${safe(x[2])}</b><small>${safe(x[3])}</small>`;
-  b.onclick=()=>openPage(x[0]); $("menu").appendChild(b);
- });
-}
-
-function page(title,html){
- $("pageTitle").textContent=title; $("content").innerHTML=html;
- $("page").classList.remove("hidden"); $("menu").classList.add("hidden");
- $("search").classList.add("hidden"); $("allHeading").classList.add("hidden");
- window.scrollTo({top:0,behavior:"smooth"});
-}
-function home(){
- $("page").classList.add("hidden"); $("menu").classList.remove("hidden");
- $("search").classList.remove("hidden"); $("allHeading").classList.remove("hidden");
- window.scrollTo({top:0,behavior:"smooth"});
-}
-$("back").onclick=home;
-
-async function getJson(url){
- const r=await fetch(url); if(!r.ok)throw Error("Xizmat javob bermadi: "+r.status); return r.json();
-}
-
-async function loadSuras(){
- page("Qur’oni Karim",'<p class="muted">Suralar ishonchli Qur’on API manbasidan yuklanmoqda...</p>');
- try{
-  const d=await getJson("https://api.alquran.cloud/v1/surah");
-  suras=d.data||[];
-  $("content").innerHTML=`<input id="surahSearch" placeholder="Sura nomini qidirish..."><div id="surahList"></div>`;
-  const draw=()=>{
-   const q=$("surahSearch").value.toLowerCase();
-   $("surahList").innerHTML="";
-   suras.filter(s=>(s.name+" "+s.englishName+" "+s.number).toLowerCase().includes(q)).forEach(s=>{
-    const b=document.createElement("button"); b.className="list-btn";
-    b.innerHTML=`<b>${s.number}. ${safe(s.englishName)}</b><br><span class="arabic">${safe(s.name)}</span><span class="small">${s.numberOfAyahs} oyat</span>`;
-    b.onclick=()=>loadSurah(s.number,s.englishName); $("surahList").appendChild(b);
-   });
-  };
-  $("surahSearch").oninput=draw; draw();
- }catch(e){$("content").innerHTML=`<div class="note">Qur’on API hozir ulanmagan. Internet aloqasini tekshirib, qayta urinib ko‘ring.</div>`;}
-}
-async function loadSurah(n,name){
- page(name,"<p>Oyatlar yuklanmoqda...</p>");
- try{
-  const d=await getJson(`https://api.alquran.cloud/v1/surah/${n}/quran-uthmani`);
-  const tr=await getJson(`https://api.alquran.cloud/v1/surah/${n}/uz.sodik`);
-  const verses=d.data.ayahs, trans=tr.data.ayahs;
-  $("content").innerHTML=`<div class="row"><button class="btn" id="surahBack">← Suralar</button><button class="btn" id="playSurah">▶ Qiroat</button></div><audio id="qAudio" controls preload="none"></audio><div id="verses"></div>`;
-  $("surahBack").onclick=loadSuras;
-  $("playSurah").onclick=()=>{ $("qAudio").src=`https://cdn.islamic.network/quran/audio-surah/128/ar.alafasy/${n}.mp3`; $("qAudio").play().catch(()=>alert("Audio ochilmadi. Internet yoki audio manbasini tekshiring.")); };
-  $("verses").innerHTML=verses.map((v,i)=>`<article class="item"><div class="arabic">${safe(v.text)} ۞ ${v.numberInSurah}</div><p>${safe(trans[i]?.text||"Tarjima mavjud emas")}</p></article>`).join("");
- }catch(e){$("content").innerHTML=`<div class="note">Sura matni yuklanmadi. Internetni tekshirib, qayta urinib ko‘ring.</div><button class="btn" id="retrySurah">Qayta urinish</button>`;$("retrySurah").onclick=()=>loadSurah(n,name);}
-}
-
-const RECITERS=[
- ["Mishary Rashid Alafasy","ar.alafasy"],
- ["Abdul Basit","ar.abdulbasitmurattal"],
- ["Maher Al Muaiqly","ar.mahermuaiqly"],
- ["Abdurrahman As-Sudais","ar.abdurrahmaansudais"],
- ["Saud Al-Shuraim","ar.saoodshuraym"],
- ["Hani Ar-Rifai","ar.hanirifai"]
+const RECITERS = [
+ {name:"Mishary Rashid Alafasy",id:"ar.alafasy"},
+ {name:"Abdul Basit — Murattal",id:"ar.abdulbasitmurattal"},
+ {name:"Abdurrahman As-Sudais",id:"ar.abdurrahmaansudais"},
+ {name:"Maher Al Muaiqly",id:"ar.mahermuaiqly"},
+ {name:"Saud Al-Shuraim",id:"ar.saoodshuraym"},
+ {name:"Hani Ar-Rifai",id:"ar.hanirifai"}
 ];
-async function recitation(){
- page("Qur’on qiroatlari",'<p>Qorini va surani tanlang.</p><select id="reciter"></select><div id="recSuras"></div>');
- $("reciter").innerHTML=RECITERS.map((r,i)=>`<option value="${i}">${safe(r[0])}</option>`).join("");
- try{
-  if(!suras.length){const d=await getJson("https://api.alquran.cloud/v1/surah");suras=d.data;}
-  $("recSuras").innerHTML=`<input id="recSearch" placeholder="Sura qidirish"><div id="recList"></div>`;
-  const draw=()=>{
-   const q=$("recSearch").value.toLowerCase(); $("recList").innerHTML="";
-   suras.filter(s=>(s.englishName+" "+s.number).toLowerCase().includes(q)).forEach(s=>{
-    const b=document.createElement("button");b.className="list-btn";
-    b.textContent=s.number+". "+s.englishName+" — "+s.name;
-    b.onclick=()=>{
-     const r=RECITERS[Number($("reciter").value)];
-     page("Qiroat: "+s.englishName,`<p class="arabic">${safe(s.name)}</p><p>${safe(r[0])}</p><audio controls autoplay src="https://cdn.islamic.network/quran/audio-surah/128/${r[1]}/${s.number}.mp3"></audio><p class="small">Agar audio ishlamasa, ushbu qori uchun audio identifikatori manbada mavjud emas bo‘lishi mumkin.</p>`);
-    };$("recList").appendChild(b);
-   });
-  };
-  $("recSearch").oninput=draw;draw();
- }catch(e){$("content").innerHTML='<div class="note">Qiroat ro‘yxatini yuklab bo‘lmadi. Internetni tekshiring.</div>';}
+
+let suras = [];
+let zikrIndex = 0;
+let zikrCount = 0;
+let isCyrillic = false;
+let quizIndex = 0;
+let quizScore = 0;
+let quizQuestions = [];
+
+function safe(value) {
+ return String(value ?? "").replace(/[&<>"']/g, ch => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ }[ch]));
 }
 
-function tasbih(idx=0){
- zikrIndex=idx%ZIKR.length; zikrCount=0; const z=ZIKR[zikrIndex];
- page("Tasbeh",`<div class="arabic">${z.a}</div><h3>${safe(z.t)}</h3><p>${safe(z.m)}</p><div class="note">Manba: ${safe(z.src)}. Takror sonini diniy manba va zikrning aynan shu shakliga qarab tekshiring.</div><div class="counter"><div class="count" id="counter">0 / ${z.n}</div><button class="count-btn" id="countButton">ZIKR</button><p><button class="btn" id="reset">Sanoqni tiklash</button> <button class="btn gold" id="next">Keyingi zikr →</button></p></div>`);
- $("countButton").onclick=()=>{
-  if(zikrCount<z.n)zikrCount++;
-  $("counter").textContent=zikrCount+" / "+z.n;
-  if(window.Telegram?.WebApp?.HapticFeedback)window.Telegram.WebApp.HapticFeedback.impactOccurred("light");
-  if(zikrCount===z.n)alert("Sanoq tugadi. Keyingi zikrga o‘tishingiz mumkin.");
- };
- $("reset").onclick=()=>{zikrCount=0;$("counter").textContent="0 / "+z.n;};
- $("next").onclick=()=>tasbih(zikrIndex+1);
+async function getJSON(url, options) {
+ const response = await fetch(url, options);
+ if (!response.ok) throw new Error("HTTP " + response.status);
+ return response.json();
 }
 
-function adhkar(kind){
- page(kind==="morning"?"Tonggi zikrlar":"Kechki zikrlar",`<p class="muted">Quyidagi zikrlar ro‘yxati umumiy tasbeh namunalari bilan cheklangan. To‘liq 14–15 ta ertalabki yoki kechki zikrlar manbasi va takror sonlari tekshirilgan holda alohida jamlanishi kerak.</p><div id="adhkarList"></div>`);
- ZIKR.forEach((z,i)=>{
-  const b=document.createElement("button");b.className="list-btn";b.innerHTML=`<span class="arabic">${z.a}</span><b>${safe(z.t)}</b><br><span class="small">${safe(z.src)}</span>`;
-  b.onclick=()=>tasbih(i);$("adhkarList").appendChild(b);
+/* Menyu */
+function renderMenu(filter = "") {
+ $("menu").innerHTML = "";
+ MENU.filter(item =>
+  (item[2] + " " + item[3]).toLowerCase().includes(filter.toLowerCase())
+ ).forEach(item => {
+  const button = document.createElement("button");
+  button.className = "tile";
+  button.innerHTML =
+   `<span class="emoji">${item[1]}</span><b>${safe(item[2])}</b><small>${safe(item[3])}</small>`;
+  button.addEventListener("click", () => openPage(item[0]));
+  $("menu").appendChild(button);
  });
 }
 
-async function prayerTimes(){
- const city=$("city").value.trim(); if(!city){$("prayerStatus").textContent="Shahar nomini kiriting.";return;}
- $("prayerStatus").textContent="Namoz vaqtlari olinmoqda...";
- try{
-  const d=await getJson(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=3`);
-  const t=d.data.timings;
-  const vals=[["Bomdod",t.Fajr],["Peshin",t.Dhuhr],["Asr",t.Asr],["Shom",t.Maghrib],["Xufton",t.Isha]];
-  $("prayers").innerHTML=vals.map(([n,v])=>`<div class="prayer"><b>${n}</b><span>${safe(v)}</span></div>`).join("");
-  $("prayerStatus").textContent="Manba: AlAdhan. Hisoblash usuli va mahalliy vaqtni shahringiz bo‘yicha tekshiring.";
- }catch(e){$("prayerStatus").textContent="Namoz vaqtlari olinmadi. Shahar nomi va internetni tekshiring.";}
+/* Tanlangan bo‘limdan boshqa bosh sahifa qismlarini yashirish */
+function page(title, html) {
+ $("pageTitle").textContent = title;
+ $("content").innerHTML = html;
+ $("page").classList.remove("hidden");
+ $("menu").classList.add("hidden");
+ $("search").classList.add("hidden");
+ $("allHeading").classList.add("hidden");
+ document.querySelector(".hero")?.classList.add("hidden");
+ document.querySelector(".quick")?.classList.add("hidden");
+ document.querySelectorAll(".section-title").forEach(el => el.classList.add("hidden"));
+ window.scrollTo({top:0,behavior:"smooth"});
 }
 
-function generic(title,text){page(title,`<div class="note">${safe(text)}</div>`);}
-function openPage(id){
- if(id==="quran")return loadSuras();
- if(id==="recitation")return recitation();
- if(id==="tasbih")return tasbih();
- if(id==="morning"||id==="evening")return adhkar(id);
- if(id==="prayer"){page("Namoz vaqtlari",'<p>Shaharni kiriting va yangilang.</p><div class="row"><input id="city2" placeholder="Masalan, Tashkent"><button class="btn gold" id="p2">Yangilash</button></div><div id="presult"></div>');$("p2").onclick=async()=>{const city=$("city2").value.trim();try{const d=await getJson(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=3`);$("presult").innerHTML=Object.entries({Bomdod:d.data.timings.Fajr,Peshin:d.data.timings.Dhuhr,Asr:d.data.timings.Asr,Shom:d.data.timings.Maghrib,Xufton:d.data.timings.Isha}).map(([k,v])=>`<div class="item">${k}: <b>${safe(v)}</b></div>`).join("");}catch(e){$("presult").textContent="Vaqtlar olinmadi.";}};return;}
- if(id==="settings")return page("Til va havolalar",'<p>Saytning ayrim matnlari tarjima qilinadi. Bu sozlama hali barcha kontentni to‘liq tarjima qilmaydi.</p><button class="btn" id="latin">Lotin</button> <button class="btn gold" id="cyrillic">Кирилл</button><p><a href="https://t.me/hakiymqalb">Telegram kanali</a></p><p>Instagram havolasi keyin sozlanadi.</p>') || (()=>{$("latin").onclick=()=>setLanguage(false);$("cyrillic").onclick=()=>setLanguage(true);})();
- const info={
-  duas:"Duolar bo‘limiga arabcha matn, tarjima va ishonchli hadis/Qur’on manbalarini tekshirib kiritish kerak.",
-  hadith:"100 hadis to‘plami uchun har bir hadisning arabcha matni, tarjimasi va aniq nashr/raqam ma’lumotlari tekshirilishi kerak.",
-  forty:"Qirq farz matni tanlangan ta’lim an’anasi va manbalar bilan tekshirib joylashtirilishi kerak.",
-  duties:"Asosiy burchlar: ishonchli dalillar va mazhab farqlari bilan tuzilgan kontent kerak.",
-  foundations:"Islom asoslari: Qur’on, sahih hadis va ishonchli ilmiy izohlar asosida tuziladi.",
-  sirah:"Siyrat voqealari bosqichma-bosqich va rivoyatlarning ishonchlilik darajasi bilan berilishi kerak.",
-  quiz:"50 savolli tasodifiy o‘yin va global ballar uchun serverdagi savollar bazasi, foydalanuvchi identifikatsiyasi va anti-abuse mexanizmi kerak.",
-  ranking:"Haqiqiy global reyting uchun server ma’lumotlar bazasi zarur. Hozircha bu sahifada real reyting ko‘rsatilmaydi.",
-  media:"Faqat qonuniy tomosha manbalarini joylashtirish mumkin. Tasdiqlanmagan video havolalari qo‘shilmaydi.",
-  ai:"TAQVO AI uchun AI provayderi kaliti va ishonchli diniy manbalar bilan tekshiriladigan server integratsiyasi kerak."
- };
- if(id==="ai"){
-  return page("TAQVO AI",'<p>Islomiy savolingizni yozing.</p><textarea id="question" rows="4" placeholder="Savolingiz..."></textarea><button class="btn gold" id="ask">Savol yuborish</button><div id="answer"></div><p class="small">AI olim yoki shayx emas. Javoblarni malakali olim bilan tekshirish zarur.</p>') || (()=>{$("ask").onclick=async()=>{const q=$("question").value.trim();if(!q)return;try{const r=await fetch(API+"/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})});const d=await r.json();$("answer").textContent=d.answer||d.detail||"Javob mavjud emas";}catch(e){$("answer").textContent="AI serveri ulanmagan yoki xato berdi.";}}})();
+function home() {
+ $("page").classList.add("hidden");
+ $("menu").classList.remove("hidden");
+ $("search").classList.remove("hidden");
+ $("allHeading").classList.remove("hidden");
+ document.querySelector(".hero")?.classList.remove("hidden");
+ document.querySelector(".quick")?.classList.remove("hidden");
+ document.querySelectorAll(".section-title").forEach(el => el.classList.remove("hidden"));
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+$("back").onclick = home;
+
+/* Qur’oni Karim — suralar ro‘yxati, arabcha matn va tarjima */
+async function loadSuras() {
+ page("Qur’oni Karim",'<p class="muted">Suralar yuklanmoqda...</p>');
+ try {
+  const result = await getJSON("https://api.alquran.cloud/v1/surah");
+  suras = result.data || [];
+  $("content").innerHTML =
+   '<input id="surahSearch" placeholder="Sura nomini qidiring"><div id="surahList"></div>';
+  const draw = () => {
+   const query = $("surahSearch").value.toLowerCase();
+   $("surahList").innerHTML = "";
+   suras.filter(s =>
+    (s.englishName + " " + s.name + " " + s.number).toLowerCase().includes(query)
+   ).forEach(s => {
+    const b = document.createElement("button");
+    b.className = "list-btn";
+    b.innerHTML = `<b>${s.number}. ${safe(s.englishName)}</b>
+     <div class="arabic">${safe(s.name)}</div>
+     <span class="small">${s.numberOfAyahs} oyat</span>`;
+    b.onclick = () => loadSurah(s.number,s.englishName);
+    $("surahList").appendChild(b);
+   });
+  };
+  $("surahSearch").oninput = draw;
+  draw();
+ } catch (e) {
+  $("content").innerHTML = '<div class="note">Suralar yuklanmadi. Internetni tekshirib, qayta urinib ko‘ring.</div><button class="btn" id="retry">Qayta urinish</button>';
+  $("retry").onclick = loadSuras;
  }
- generic(MENU.find(x=>x[0]===id)?.[2]||"TAQVO",info[id]||"Bu bo‘lim uchun ishonchli kontent va tegishli xizmat integratsiyasi talab qilinadi.");
 }
 
-function setLanguage(toCyr){
- cyr=toCyr;
- $("language").textContent=cyr?"Lotin":"Кирилл";
- $("allHeading").textContent=cyr?"17 та бўлим":"17 ta bo‘lim";
- $("prayerHeading").textContent=cyr?"Намоз вақтлари":"Namoz vaqtlari";
- $("heroTitle").textContent=cyr?"Қуръон ва зикр билан қалбни ёритинг":"Qur’on va zikr bilan qalbni yoritинг";
- $("heroDesc").textContent=cyr?"Ишончли манбалар ва фойдали ибодатлар бир жойда.":"Ishonchli manbalar va foydali ibodatlar bir joyda.";
+async function loadSurah(number,name) {
+ page(name,"<p>Oyatlar yuklanmoqda...</p>");
+ try {
+  const [arabic,translation] = await Promise.all([
+   getJSON(`https://api.alquran.cloud/v1/surah/${number}/quran-uthmani`),
+   getJSON(`https://api.alquran.cloud/v1/surah/${number}/uz.sodik`)
+  ]);
+  const verses = arabic.data.ayahs;
+  const translated = translation.data.ayahs;
+  $("content").innerHTML = `
+   <button class="btn" id="surahBack">← Suralar</button>
+   <h3>${safe(name)}</h3>
+   <label for="qari">Qiroatni tanlang</label>
+   <select id="qari">${RECITERS.map((r,i)=>`<option value="${i}">${safe(r.name)}</option>`).join("")}</select>
+   <audio id="surahAudio" controls preload="metadata"></audio>
+   <button class="btn gold" id="playAudio">▶ Qiroatni tinglash</button>
+   <div id="verseList"></div>`;
+  $("surahBack").onclick = loadSuras;
+  $("playAudio").onclick = () => {
+   const reciter = RECITERS[Number($("qari").value)];
+   $("surahAudio").src =
+    `https://cdn.islamic.network/quran/audio-surah/128/${reciter.id}/${number}.mp3`;
+   $("surahAudio").play().catch(() => alert("Bu qori audiosi manbada topilmadi yoki ijro etilmadi."));
+  };
+  $("verseList").innerHTML = verses.map((v,i) => `
+   <article class="item">
+    <div class="arabic">${safe(v.text)} ۞ ${v.numberInSurah}</div>
+    <p>${safe(translated[i]?.text || "Tarjima mavjud emas")}</p>
+   </article>`).join("");
+ } catch (e) {
+  $("content").innerHTML = '<div class="note">Sura matni yoki tarjimasi yuklanmadi. Qayta urinib ko‘ring.</div><button class="btn" id="retrySurah">Qayta urinish</button>';
+  $("retrySurah").onclick = () => loadSurah(number,name);
+ }
+}
+
+/* Qiroatlar */
+async function recitation() {
+ page("Qur’on qiroatlari",`
+  <p>Qorini tanlang va 114 suradan birini bosing.</p>
+  <select id="reciter">${RECITERS.map((r,i)=>`<option value="${i}">${safe(r.name)}</option>`).join("")}</select>
+  <input id="recSearch" placeholder="Sura qidirish">
+  <div id="recList"></div>`);
+ try {
+  if (!suras.length) {
+   const data = await getJSON("https://api.alquran.cloud/v1/surah");
+   suras = data.data || [];
+  }
+  const draw = () => {
+   const q = $("recSearch").value.toLowerCase();
+   $("recList").innerHTML = "";
+   suras.filter(s => (s.englishName+" "+s.number).toLowerCase().includes(q)).forEach(s => {
+    const b = document.createElement("button");
+    b.className = "list-btn";
+    b.textContent = `${s.number}. ${s.englishName} — ${s.name}`;
+    b.onclick = () => {
+     const r = RECITERS[Number($("reciter").value)];
+     page("Qiroat — "+s.englishName,`
+      <button class="btn" id="recBack">← Qorilar ro‘yxati</button>
+      <p>${safe(r.name)}</p>
+      <p class="arabic">${safe(s.name)}</p>
+      <audio id="recAudio" controls preload="metadata" src="https://cdn.islamic.network/quran/audio-surah/128/${r.id}/${s.number}.mp3"></audio>
+      <p class="small">Pleyerda vaqt, pauza va davom ettirish boshqaruvlari mavjud. Audio manbasi ishlashi internet va manba mavjudligiga bog‘liq.</p>`);
+     $("recBack").onclick = recitation;
+    };
+    $("recList").appendChild(b);
+   });
+  };
+  $("recSearch").oninput = draw;
+  draw();
+ } catch(e) {
+  $("content").innerHTML = '<div class="note">Qiroat ro‘yxatini yuklab bo‘lmadi.</div>';
+ }
+}
+
+/* Tasbeh */
+function tasbih(index = 0) {
+ zikrIndex = index % ZIKR.length;
+ zikrCount = 0;
+ const z = ZIKR[zikrIndex];
+ page("Tasbeh",`
+  <div class="arabic">${z.a}</div>
+  <h3>${safe(z.t)}</h3>
+  <p>${safe(z.m)}</p>
+  <div class="note">Manba: ${safe(z.src)}. Takror soni aynan zikrning shakliga mos tekshirilishi lozim.</div>
+  <div class="counter">
+   <div class="count" id="counter">0 / ${z.n}</div>
+   <button class="count-btn" id="countButton">ZIKR</button>
+   <p><button class="btn" id="reset">Sanoqni tiklash</button>
+   <button class="btn gold" id="next">Keyingi zikr →</button></p>
+  </div>`);
+ $("countButton").onclick = () => {
+  if (zikrCount < z.n) zikrCount++;
+  $("counter").textContent = `${zikrCount} / ${z.n}`;
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+   window.Telegram.WebApp.HapticFeedback.impactOccurred("light");
+  }
+  if (zikrCount === z.n) alert("Sanoq tugadi. Keyingi zikrga o‘tishingiz mumkin.");
+ };
+ $("reset").onclick = () => {
+  zikrCount = 0;
+  $("counter").textContent = `0 / ${z.n}`;
+ };
+ $("next").onclick = () => tasbih(zikrIndex+1);
+}
+
+function adhkar(kind) {
+ page(kind==="morning"?"Tonggi zikrlar":"Kechki zikrlar",
+  '<p class="muted">Zikrni tanlang. Har bir zikrning to‘liq sahih manbasi va takror sonini alohida tekshirish zarur.</p><div id="adhkarList"></div>');
+ ZIKR.forEach((z,i) => {
+  const b = document.createElement("button");
+  b.className = "list-btn";
+  b.innerHTML = `<div class="arabic">${z.a}</div><b>${safe(z.t)}</b><br><span class="small">${safe(z.src)}</span>`;
+  b.onclick = () => tasbih(i);
+  $("adhkarList").appendChild(b);
+ });
+}
+
+/* Namoz vaqtlari */
+async function showPrayerTimes(city,target="prayers",status="prayerStatus") {
+ if (!city.trim()) {
+  if ($(status)) $(status).textContent = "Shahar nomini kiriting.";
+  return;
+ }
+ if ($(status)) $(status).textContent = "Namoz vaqtlari olinmoqda...";
+ try {
+  const data = await getJSON(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=3`);
+  const t = data.data.timings;
+  const vals = [["Bomdod",t.Fajr],["Peshin",t.Dhuhr],["Asr",t.Asr],["Shom",t.Maghrib],["Xufton",t.Isha]];
+  $(target).innerHTML = vals.map(([n,v])=>`<div class="prayer"><b>${n}</b><span>${safe(v)}</span></div>`).join("");
+  if ($(status)) $(status).textContent = `Shahar: ${city}. Vaqtlarni mahalliy masjid taqvimi bilan tekshiring.`;
+ } catch(e) {
+  if ($(status)) $(status).textContent = "Vaqtlar olinmadi. Shahar nomi yoki internetni tekshiring.";
+ }
+}
+async function prayerPage() {
+ page("Namoz vaqtlari",`
+  <p>Shahar nomini kiriting. Boshqa davlatdagi shaharlar uchun ham qidirish mumkin.</p>
+  <input id="citySearch" placeholder="Masalan, Karaganda, Almaty, Tashkent">
+  <button class="btn gold" id="cityLoad">Namoz vaqtlarini olish</button>
+  <div class="prayers" id="cityPrayers"></div>
+  <p id="cityStatus" class="small"></p>`);
+ $("cityLoad").onclick = () => showPrayerTimes($("citySearch").value,"cityPrayers","cityStatus");
+}
+
+/* Siyrat o‘yini — namuna savollar. Katta, manbalari tekshirilgan savollar bazasi hali alohida qo‘shilishi kerak. */
+const QUESTIONS = [
+ {q:"Payg‘ambarimiz ﷺ qaysi shaharda tug‘ilganlar?",a:["Makka","Madina","Toif","Quddus"],correct:0,why:"Payg‘ambarimiz ﷺ Makkada tavallud topganlar."},
+ {q:"Birinchi vahiy qaysi g‘orda nozil bo‘lgan?",a:["Savr","Hiro","Uhud","Quba"],correct:1,why:"Birinchi vahiy Hiro g‘orida nozil bo‘lgan."},
+ {q:"Hijrat qaysi shaharga bo‘lgan?",a:["Shom","Yaman","Madina","Toif"],correct:2,why:"Musulmonlar Madinaga hijrat qilganlar."}
+];
+function quiz() {
+ quizScore = 0;
+ quizIndex = 0;
+ quizQuestions = [...QUESTIONS].sort(()=>Math.random()-0.5);
+ showQuestion();
+}
+function showQuestion() {
+ if (quizIndex >= quizQuestions.length) {
+  page("O‘yin yakuni",`<h3>Natija: ${quizScore} / ${quizQuestions.length}</h3><p>Bu hozircha kichik namuna. To‘liq 50 savolli, umumiy reytingga ulangan o‘yin uchun tekshirilgan savollar bazasi va server ball mexanizmi kerak.</p><button class="btn gold" id="playAgain">Qayta o‘ynash</button>`);
+  $("playAgain").onclick = quiz;
+  return;
+ }
+ const q = quizQuestions[quizIndex];
+ page(`Siyrat o‘yini — ${quizIndex+1}/${quizQuestions.length}`,
+  `<h3>${safe(q.q)}</h3><div id="answers"></div><div id="explanation"></div>`);
+ q.a.forEach((answer,i) => {
+  const b = document.createElement("button");
+  b.className = "list-btn";
+  b.textContent = `${"ABCD"[i]}. ${answer}`;
+  b.onclick = () => {
+   document.querySelectorAll("#answers button").forEach(x=>x.disabled=true);
+   const correct = i===q.correct;
+   if (correct) quizScore++;
+   $("explanation").innerHTML = `<div class="note">${correct?"To‘g‘ri javob!":"To‘g‘ri javob: "+safe(q.a[q.correct])}<br>${safe(q.why)}</div><button class="btn gold" id="nextQuestion">Keyingi savol</button>`;
+   $("nextQuestion").onclick = () => {quizIndex++;showQuestion();};
+  };
+  $("answers").appendChild(b);
+ });
+}
+
+/* Bo‘limlar */
+function openPage(id) {
+ if (id==="quran") return loadSuras();
+ if (id==="recitation") return recitation();
+ if (id==="tasbih") return tasbih();
+ if (id==="morning"||id==="evening") return adhkar(id);
+ if (id==="prayer") return prayerPage();
+ if (id==="quiz") return quiz();
+
+ if (id==="ai") {
+  page("TAQVO AI",`
+   <p>Islomiy savolingizni yozing.</p>
+   <textarea id="question" rows="4" placeholder="Savolingiz..."></textarea>
+   <button class="btn gold" id="ask">Savol yuborish</button>
+   <div id="answer"></div>
+   <p class="small">AI olim yoki mufti emas. Murakkab fatvolarni malakali olim bilan tekshiring.</p>`);
+  $("ask").onclick = async () => {
+   const question = $("question").value.trim();
+   if (!question) return;
+   $("answer").textContent = "Javob olinmoqda...";
+   const init_data = window.Telegram?.WebApp?.initData || "";
+   try {
+    const response = await fetch(API+"/api/ask",{
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({question,init_data})
+    });
+    const result = await response.json();
+    $("answer").textContent = response.ok ? result.answer : (result.detail || "AI xizmatida xato.");
+   } catch(e) {
+    $("answer").textContent = "Serverga ulanib bo‘lmadi. Render holatini tekshiring.";
+   }
+  };
+  return;
+ }
+
+ if (id==="settings") {
+  page("Til va havolalar",`
+   <p>Til tanlang:</p>
+   <button class="btn" id="latin">Lotin</button>
+   <button class="btn gold" id="cyrillic">Кирилл</button>
+   <p><a href="https://t.me/hakiymqalb" target="_blank" rel="noopener">Telegram kanali</a></p>
+   <p>Instagram havolasini haqiqiy profilingiz bilan sozlash kerak.</p>`);
+  $("latin").onclick = () => setLanguage(false);
+  $("cyrillic").onclick = () => setLanguage(true);
+  return;
+ }
+
+ const info = {
+  duas:"Sahih duolar: arabcha matn, tarjima, fazilat va aniq Qur’on/hadis manbalari bilan to‘liq to‘plam alohida tekshirib kiritilishi kerak.",
+  hadith:"100 sahih hadis: arabcha matn, o‘zbekcha tarjima va aniq manba raqamlari bilan to‘liq to‘plam hali qo‘shilishi kerak.",
+  forty:"Qirq farz matni ishonchli manba va tanlangan ta’lim an’anasi bilan tekshirib kiritilishi kerak.",
+  duties:"Asosiy burchlar bo‘limiga dalillar va mazhab farqlari tekshirilgan kontent qo‘shilishi kerak.",
+  foundations:"Islom asoslari Qur’on, sahih hadis va ishonchli ilmiy sharhlar asosida to‘ldirilishi kerak.",
+  sirah:"Siyrat voqealari bosqichma-bosqich, manbalari va rivoyat darajalari bilan to‘ldirilishi kerak.",
+  ranking:"Haqiqiy global reyting uchun doimiy ma’lumotlar bazasi va server ball tekshiruvlari kerak.",
+  media:"Faqat qonuniy va tekshirilgan video manbalari joylashtirilishi kerak."
+ };
+ const selected = MENU.find(x=>x[0]===id);
+ page(selected?selected[2]:"TAQVO PRO MAX",`<div class="note">${safe(info[id]||"Bu bo‘lim uchun tekshirilgan kontent va tegishli xizmat integratsiyasi kerak.")}</div>`);
+}
+
+/* Lotin/kirill rejimi — menyu va asosiy sarlavhalar */
+function setLanguage(toCyr) {
+ isCyrillic = toCyr;
+ $("language").textContent = isCyrillic ? "Lotin" : "Кирилл";
+ $("allHeading").textContent = isCyrillic ? "17 та бўлим" : "17 ta bo‘lim";
+ $("prayerHeading").textContent = isCyrillic ? "Намоз вақтлари" : "Namoz vaqtlari";
+ $("heroTitle").textContent = isCyrillic ? "Қуръон ва зикр билан қалбни ёритинг" : "Qur’on va zikr bilan qalbni yoriting";
+ $("heroDesc").textContent = isCyrillic ? "Ишончли манбалар ва фойдали ибодатлар бир жойда." : "Ishonchli manbalar va foydali ibodatlar bir joyda.";
  renderMenu($("search").value);
 }
-$("language").onclick=()=>setLanguage(!cyr);
+
+/* Ishga tushirish */
+$("language").onclick = () => setLanguage(!isCyrillic);
 $("search").addEventListener("input",e=>renderMenu(e.target.value));
-$("loadPrayer").onclick=prayerTimes;
-document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openPage(b.dataset.open)));
-if(window.Telegram?.WebApp){window.Telegram.WebApp.ready();window.Telegram.WebApp.expand();}
+$("loadPrayer").onclick = () => showPrayerTimes($("city").value,"prayers","prayerStatus");
+document.querySelectorAll("[data-open]").forEach(button=>{
+ button.addEventListener("click",()=>openPage(button.dataset.open));
+});
+if (window.Telegram?.WebApp) {
+ window.Telegram.WebApp.ready();
+ window.Telegram.WebApp.expand();
+}
 renderMenu();
