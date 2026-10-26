@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-TAQVO PRO MAX — islomiy Telegram bot (main.py)
+TAQVO PRO MAX — islomiy Telegram bot (main.py) — to'liq versiya
 Kutubxonalar: aiogram 3.x, aiohttp, tzdata
 """
 import asyncio
@@ -29,18 +29,19 @@ from aiogram.types import BotCommand, MenuButtonWebApp, Message, WebAppInfo
 
 # ====================== SOZLAMALAR ======================
 BOT_TOKEN = os.getenv("BOT_TOKEN", "BU_YERGA_BOT_TOKEN")
-CHANNEL = os.getenv("CHANNEL", "@kanal_username")          # kanal useri (bot kanalda ADMIN bo'lishi shart)
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://USERNAME.github.io/REPO/")  # saytingiz manzili
-AI_KEYS = [k.strip() for k in os.getenv("AI_KEYS", "").split(",") if k.strip()]  # bir nechta kalit: k1,k2,k3
+CHANNEL = os.getenv("CHANNEL", "@kanal_username")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://USERNAME.github.io/REPO/")
+AI_KEYS = [k.strip() for k in os.getenv("AI_KEYS", "").split(",") if k.strip()]
 AI_MODEL = os.getenv("AI_MODEL", "claude-haiku-5-5")
 DB_PATH = os.getenv("DB_PATH", "taqvo.db")
 PORT = int(os.getenv("PORT", "8080"))
 CHANNEL_LINK = "https://t.me/" + CHANNEL.lstrip("@")
 
-MORNING_ZIKR_TIME = (8, 0)      # ertalabki zikr 08:00
-EVENING_ZIKR_TIME = (20, 0)     # kechki zikr 20:00
-DEATH_TIMES = [(10, 30), (22, 0)]   # o'lim va oxirat eslatmasi (kuniga 2 marta)
-AI_CONCURRENCY = 200            # bir vaqtda nechta savolga javob berish
+MORNING_ZIKR_TIME = (8, 0)
+EVENING_ZIKR_TIME = (20, 0)
+DEATH_TIMES = [(10, 30), (22, 0)]
+AI_CONCURRENCY = 200
+DAILY_CAP = 400  # saytda kuniga olish mumkin bo'lgan maksimal ball
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("taqvo")
@@ -58,6 +59,10 @@ db.execute("""CREATE TABLE IF NOT EXISTS users(
     city TEXT DEFAULT 'Toshkent', lat REAL DEFAULT 41.3111, lon REAL DEFAULT 69.2797,
     tz TEXT DEFAULT 'Asia/Tashkent', subscribed INTEGER DEFAULT 0, blocked INTEGER DEFAULT 0)""")
 db.execute("CREATE TABLE IF NOT EXISTS sent(uid INTEGER, key TEXT, PRIMARY KEY(uid,key))")
+db.execute("""CREATE TABLE IF NOT EXISTS scores(
+    uid INTEGER PRIMARY KEY, name TEXT, uname TEXT, photo TEXT,
+    score INTEGER DEFAULT 0, tasbeh INTEGER DEFAULT 0, last INTEGER DEFAULT 0,
+    day TEXT DEFAULT '', gain INTEGER DEFAULT 0)""")
 db.commit()
 
 
@@ -119,7 +124,7 @@ async def get_timings(lat, lon, date_str):
     if len(_tcache) > 3000:
         _tcache.clear()
     url = f"https://api.aladhan.com/v1/timings/{date_str}"
-    params = {"latitude": lat, "longitude": lon, "method": 3, "school": 1}  # school=1 -> Hanafiy asr
+    params = {"latitude": lat, "longitude": lon, "method": 3, "school": 1}
     for _ in range(3):
         try:
             async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as r:
@@ -155,7 +160,11 @@ def times_text(city, t):
 
 async def apply_location(m: Message, city, lat, lon, tz=None):
     use_tz = tz or "Asia/Tashkent"
-    date_str = datetime.now(ZoneInfo(use_tz)).strftime("%d-%m-%Y")
+    try:
+        date_str = datetime.now(ZoneInfo(use_tz)).strftime("%d-%m-%Y")
+    except Exception:
+        use_tz = "Asia/Tashkent"
+        date_str = datetime.now(ZoneInfo(use_tz)).strftime("%d-%m-%Y")
     t = await get_timings(lat, lon, date_str)
     if not t:
         await m.answer("Namoz vaqtlarini hozir olib bo'lmadi. Birozdan so'ng qayta urinib ko'ring.")
@@ -436,7 +445,7 @@ async def safe_send(uid, text):
             db.commit()
         except Exception as e:
             log.warning("Yuborishda xato %s: %s", uid, e)
-        await asyncio.sleep(1)  # soniyasiga ~25 ta xabar chegarasi
+        await asyncio.sleep(1)
 
 
 _cleaned = {"day": ""}
@@ -500,8 +509,8 @@ async def scheduler():
         await asyncio.sleep(30)
 
 
-# ====================== SAYT UCHUN OBUNA TEKSHIRUVI (API) ======================
-def valid_init_data(init_data: str):
+# ====================== SAYT UCHUN API (obuna + reyting) ======================
+def parse_init(init_data: str):
     try:
         pairs = dict(parse_qsl(init_data, keep_blank_values=True))
         h = pairs.pop("hash", None)
@@ -512,9 +521,20 @@ def valid_init_data(init_data: str):
             return None
         if time.time() - int(pairs.get("auth_date", "0")) > 86400:
             return None
-        return json.loads(pairs["user"])["id"]
+        return json.loads(pairs["user"])
     except Exception:
         return None
+
+
+async def auth_sub(request, fresh=False):
+    try:
+        body = await request.json()
+    except Exception:
+        return None, None
+    u = parse_init(body.get("initData", ""))
+    if not u or not await is_sub(u["id"], fresh=fresh):
+        return None, body
+    return u, body
 
 
 @web.middleware
@@ -522,19 +542,57 @@ async def cors(request, handler):
     resp = web.Response() if request.method == "OPTIONS" else await handler(request)
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
     return resp
 
 
 async def api_check(request):
+    u, _ = await auth_sub(request, fresh=True)
+    if not u:
+        return web.json_response({"ok": False}, status=200)
+    return web.json_response({"ok": True})
+
+
+async def api_sync(request):
+    u, body = await auth_sub(request)
+    if not u:
+        return web.json_response({"ok": False}, status=403)
+    uid = u["id"]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     try:
-        body = await request.json()
+        want = max(0, int(body.get("score", 0)))
+        tas = max(0, int(body.get("tasbeh", 0)))
     except Exception:
         return web.json_response({"ok": False}, status=400)
-    uid = valid_init_data(body.get("initData", ""))
-    if not uid:
-        return web.json_response({"ok": False, "reason": "invalid"}, status=403)
-    return web.json_response({"ok": await is_sub(uid, fresh=True)})
+    row = db.execute("SELECT * FROM scores WHERE uid=?", (uid,)).fetchone()
+    old = row["score"] if row else 0
+    gain = row["gain"] if row and row["day"] == today else 0
+    new = old
+    if want > old:
+        add = min(want - old, max(0, DAILY_CAP - gain))
+        new, gain = old + add, gain + add
+    tas = min(tas, (row["tasbeh"] if row else 0) + 3000)
+    db.execute("""INSERT INTO scores(uid,name,uname,photo,score,tasbeh,last,day,gain) VALUES(?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(uid) DO UPDATE SET name=excluded.name, uname=excluded.uname, photo=excluded.photo,
+        score=excluded.score, tasbeh=excluded.tasbeh, last=excluded.last, day=excluded.day, gain=excluded.gain""",
+               (uid, u.get("first_name", ""), u.get("username", ""), u.get("photo_url", ""),
+                new, tas, int(time.time()), today, gain))
+    db.commit()
+    return web.json_response({"ok": True, "score": new})
+
+
+async def api_top(request):
+    u, _ = await auth_sub(request)
+    if not u:
+        return web.json_response({"ok": False}, status=403)
+    now, out = int(time.time()), []
+    for r in db.execute("SELECT * FROM scores").fetchall():
+        ago = max(0, (now - r["last"]) // 86400)
+        out.append({"n": r["name"], "u": r["uname"], "ph": r["photo"],
+                    "s": max(0, r["score"] - 2 * ago), "ago": ago})  # faol bo'lmasa kuniga -2 ball
+    out.sort(key=lambda x: -x["s"])
+    return web.json_response({"ok": True, "list": out[:50], "total": len(out),
+                              "active": sum(1 for x in out if x["ago"] == 0)})
 
 
 async def api_health(request):
@@ -553,6 +611,8 @@ async def main():
 
     app = web.Application(middlewares=[cors])
     app.router.add_post("/api/check", api_check)
+    app.router.add_post("/api/sync", api_sync)
+    app.router.add_post("/api/top", api_top)
     app.router.add_get("/", api_health)
     runner = web.AppRunner(app)
     await runner.setup()
