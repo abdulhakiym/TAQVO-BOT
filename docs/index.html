@@ -43,7 +43,7 @@ button{font:inherit;color:inherit;border:0;background:none}
 <div id="nav"></div><div id="toast"></div>
 <script>
 /* ===== SOZLAMA ===== */
-const CFG={API:'',CH:'hakiym_qalb',IG:'abdulhakiym1'}; // API: Cloudflare Worker manzili (pastda 2-fayl). Bo'sh bo'lsa - sinov rejimi
+const CFG={API:'',CH:'hakiymqalb',IG:'abdulhakiym1'}; // API: Cloudflare Worker manzili (pastda 2-fayl). Bo'sh bo'lsa - sinov rejimi
 const tg=window.Telegram&&Telegram.WebApp;try{tg.ready();tg.expand();tg.setHeaderColor('#0a2e3d');tg.setBackgroundColor('#0a2e3d')}catch(e){}
 const $=s=>document.querySelector(s),pad=n=>String(n).padStart(3,'0'),au=$('#au');
 const S={g(k,d){try{const v=localStorage.getItem('tq'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},s(k,v){try{localStorage.setItem('tq'+k,JSON.stringify(v))}catch(e){}}};
@@ -57,7 +57,7 @@ function toast(m){const t=$('#toast');t.textContent=L=='k'?cyr(m):m;t.classList.
 function setL(x){L=x;S.s('L',x);document.documentElement.lang=x=='k'?'uz-Cyrl':'uz';nav();go(cur,curA,up)}
 /* ===== BALL / SERVER ===== */
 async function api(p,b){const r=await fetch(CFG.API+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init:(tg&&tg.initData)||'',...b})});return r.json()}
-let st;function sync(){if(!CFG.API)return;clearTimeout(st);st=setTimeout(()=>api('/sync',{score:S.g('pts',0),tasbeh:S.g('tt',0)}).catch(()=>{}),1500)}
+let st;function sync(){if(!CFG.API)return;clearTimeout(st);st=setTimeout(()=>api('/sync',{score:S.g('pts',0),tasbeh: S.g('tt',0)}).catch(()=>{}),1500)}
 function pts(n){S.s('pts',Math.max(0,S.g('pts',0)+n));S.s('last',Date.now());toast((n>0?'+':'')+n+' ball');sync()}
 function mk(k,i,t,p,id){const dn=S.g('dn',{}),key=k+i+t;if(dn[key]){delete dn[key];pts(-p)}else{dn[key]=1;pts(p);hap('medium')}S.s('dn',dn);DT(id,i);loc($('#app'))}
 /* ===== MA'LUMOTLAR (arrays: [sarlavha, ma'no, arabcha, manba, fazilat, guruh]) ===== */
