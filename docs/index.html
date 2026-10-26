@@ -1,78 +1,163 @@
-/* paket1.js — TAQVO tuzatishlari (to'liq fayl) */
-(function () {
-  /* ===== FAQAT SHU QATORNI O'ZGARTIRASIZ ===== */
-  const SERVER = "https://taqvo-bot-api.onrender.com";
-  const CHANNEL = "hakiymqalb";              // kanal useri, @ belgisiz
-  const INSTAGRAM = "abdulhakiym1";
-  /* ============================================ */
 
-  CFG.API = SERVER; CFG.CH = CHANNEL; CFG.IG = INSTAGRAM;
-  const app = document.getElementById('app');
-  let OK = false;
-
-  app.innerHTML = '<div class="card" style="text-align:center;padding:28px"><div style="font-size:40px">⏳</div><h2>Yuklanmoqda...</h2><p class="sub">Birinchi ochilishda 30 soniyagacha kutish mumkin.</p></div>';
-
-  // Botga so'rov: vaqt chegarasi, bir marta qayta urinish, xatoni ushlash
-  window.api = async function (p, b) {
-    let err;
-    for (let i = 0; i < 2; i++) {
-      const ac = new AbortController();
-      const t = setTimeout(() => ac.abort(), 30000);
-      try {
-        const r = await fetch(CFG.API + '/api' + p, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData: (tg && tg.initData) || '', ...b }),
-          signal: ac.signal
-        });
-        const j = await r.json();
-        clearTimeout(t);
-        return j;
-      } catch (e) { err = e; clearTimeout(t); await new Promise(r => setTimeout(r, 2000)); }
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050507">
+  <meta name="description" content="TAQVO PRO MAX — Qur'on, zikr, namoz vaqtlari, hadislar va islomiy bilimlar.">
+  <title>TAQVO PRO MAX</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg:#050507; --panel:#101014; --panel2:#17171d;
+      --gold:#ffd700; --text:#f7f4eb; --muted:#a4a1a8;
+      --border:rgba(255,215,0,.18); --green:#8dd7a2;
     }
-    throw err;
-  };
-
-  // Telegram ichida havolalar to'g'ri ochilsin
-  document.addEventListener('click', function (e) {
-    const a = e.target.closest && e.target.closest('a[href]');
-    if (!a || !tg) return;
-    const h = a.href;
-    if (/^https:\/\/t\.me\//i.test(h)) { e.preventDefault(); try { tg.openTelegramLink(h); } catch (x) { window.open(h, '_blank'); } }
-    else if (/^https?:\/\//i.test(h)) { e.preventDefault(); try { tg.openLink(h); } catch (x) { window.open(h, '_blank'); } }
-  }, true);
-
-  // Obuna tasdiqlanmaguncha hech qaysi bo'lim ochilmaydi
-  const _go = window.go;
-  window.go = function () { if (!OK) return; return _go.apply(this, arguments); };
-
-  window.boot = async function () {
-    nav();
-    OK = false;
-    if (!(tg && tg.initData)) { gate('tg'); return; }
-    try {
-      const r = await api('/check', {});
-      if (r && r.ok) { OK = true; go('home'); } else gate('sub');
-    } catch (e) { gate('net'); }
-  };
-
-  // Buzuq arabcha matn tuzatildi
-  D.d.forEach(x => { if (x[0] === 'Masjiddan chiqishda') x[2] = 'اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ'; });
-
-  // Namoz taymeri to'planib qolmasin
-  const _lt = window.lt;
-  window.lt = function () { clearInterval(tmr); return _lt(); };
-
-  // Kuniga ball chegarasi
-  const _pts = window.pts;
-  window.pts = function (n) {
-    if (n > 0) {
-      const k = 'cap' + new Date().toDateString(), u = S.g(k, 0);
-      if (u >= 300) { toast("Bugungi ball limiti to'ldi"); return; }
-      n = Math.min(n, 300 - u); S.s(k, u + n);
+    * { box-sizing:border-box }
+    body {
+      margin:0; background:radial-gradient(ellipse at top,#211b0b 0,#09090c 38%,var(--bg) 75%);
+      color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      min-height:100vh;
     }
-    _pts(n);
-  };
+    button,input,select { font:inherit }
+    button { cursor:pointer }
+    .app { max-width:440px; margin:auto; min-height:100vh; padding:16px 15px 40px }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:12px }
+    .brand { font-size:20px; font-weight:900; letter-spacing:1px }
+    .brand span { color:var(--gold) }
+    .sub { color:var(--muted); font-size:12px; margin-top:5px }
+    .pill {
+      color:var(--gold); border:1px solid var(--border); border-radius:99px;
+      padding:9px 11px; background:#16130b; font-size:12px;
+    }
+    .hero {
+      margin-top:20px; border:1px solid var(--border); border-radius:24px;
+      padding:21px; background:linear-gradient(140deg,#211b0d,#121216 65%);
+      box-shadow:0 15px 50px #0006;
+    }
+    .eyebrow { color:var(--gold); font-size:11px; letter-spacing:2px; font-weight:800 }
+    h1 { font-size:27px; line-height:1.2; margin:10px 0 }
+    p { line-height:1.6 }
+    .muted { color:var(--muted) }
+    .section-title { font-size:17px; font-weight:800; margin:24px 0 12px }
+    .prayers { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:18px }
+    .prayer { padding:11px 2px; text-align:center; border-radius:13px; background:#ffffff08; border:1px solid #ffffff0d }
+    .prayer b { display:block; font-size:11px }
+    .prayer span { display:block; margin-top:7px; color:var(--gold); font-size:12px }
+    .location { display:flex; gap:8px; margin-top:13px }
+    select,.search {
+      width:100%; min-width:0; color:var(--text); background:#19191f;
+      border:1px solid #ffffff18; border-radius:12px; padding:12px;
+    }
+    .gold-btn {
+      border:0; border-radius:12px; padding:12px 15px; color:#151106;
+      font-weight:800; background:linear-gradient(135deg,#ffe98b,#ffd700);
+    }
+    .outline-btn {
+      border:1px solid var(--border); border-radius:12px; padding:11px;
+      color:var(--gold); background:#17140b;
+    }
+    .quick { display:grid; grid-template-columns:1fr 1fr; gap:10px }
+    .quick button { text-align:left; padding:15px; border-radius:17px; color:var(--text); background:var(--panel); border:1px solid #ffffff12 }
+    .quick strong { display:block; margin-bottom:6px }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px }
+    .tile {
+      min-height:116px; padding:15px; text-align:left; color:var(--text);
+      background:linear-gradient(145deg,#18181e,#0e0e12);
+      border:1px solid #ffffff12; border-radius:18px;
+      transition:transform .15s,border-color .15s;
+    }
+    .tile:active { transform:scale(.98) }
+    .tile .emoji { font-size:25px; display:block; margin-bottom:12px }
+    .tile b { font-size:13px; line-height:1.4; display:block }
+    .tile small { display:block; margin-top:7px; font-size:11px; color:var(--muted); line-height:1.4 }
+    .panel { background:var(--panel); border:1px solid #ffffff12; border-radius:18px; padding:16px; margin-top:12px }
+    .item { padding:14px 0; border-bottom:1px solid #ffffff10 }
+    .item:last-child { border-bottom:0 }
+    .arabic { font-family:"Times New Roman",serif; direction:rtl; text-align:right; font-size:26px; line-height:1.9; margin:14px 0 }
+    .counter { text-align:center; padding:20px }
+    .count { color:var(--gold); font-size:48px; font-weight:900; margin:14px }
+    .count-btn { width:150px; height:150px; border-radius:50%; border:2px solid var(--gold); color:var(--gold); background:#1c180a; font-size:23px; font-weight:800 }
+    .back { margin-top:20px; margin-bottom:10px }
+    .hidden { display:none!important }
+    .note { border-radius:12px; background:#19160c; color:#dfd3a5; padding:12px; font-size:12px; line-height:1.6 }
+    footer { margin-top:35px; text-align:center; color:var(--muted); font-size:12px; line-height:2 }
+    footer a { color:var(--gold); text-decoration:none }
+    .medal { font-size:22px }
+    @media(min-width:441px) { .app { border-left:1px solid #ffffff0b; border-right:1px solid #ffffff0b } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div>
+      <div class="brand">TAQVO <span>PRO MAX</span></div>
+      <div class="sub" id="greeting">Qalbingizni ilm va zikr bilan yoritинг</div>
+    </div>
+    <button class="pill" id="languageBtn">LOTIN / КИРИЛЛ</button>
+  </header>
 
-  boot();
-})();
+  <section class="hero">
+    <div class="eyebrow">ILM • IBODAT • TAQVO</div>
+    <h1 id="heroTitle">Allohni zikr qilish bilan qalblar orom topadi.</h1>
+    <p class="muted" id="heroDesc">Qur’on, sahih zikrlar va islomiy bilimlar — bir joyda.</p>
+    <div class="section-title" id="prayerTitle">Namoz vaqtlari</div>
+    <div class="prayers" id="prayers">
+      <div class="prayer"><b>Bomdod</b><span>--:--</span></div>
+      <div class="prayer"><b>Peshin</b><span>--:--</span></div>
+      <div class="prayer"><b>Asr</b><span>--:--</span></div>
+      <div class="prayer"><b>Shom</b><span>--:--</span></div>
+      <div class="prayer"><b>Xufton</b><span>--:--</span></div>
+    </div>
+    <div class="location">
+      <select id="city">
+        <option value="Tashkent">Toshkent</option>
+        <option value="Samarkand">Samarqand</option>
+        <option value="Fergana">Farg‘ona</option>
+        <option value="Andijan">Andijon</option>
+        <option value="Bukhara">Buxoro</option>
+        <option value="Almaty">Olmaota</option>
+        <option value="Astana">Astana</option>
+        <option value="Karaganda">Qarag‘anda</option>
+        <option value="Bishkek">Bishkek</option>
+        <option value="Makkah">Makka</option>
+        <option value="Madinah">Madina</option>
+        <option value="Istanbul">Istanbul</option>
+        <option value="London">London</option>
+      </select>
+      <button class="gold-btn" id="cityBtn">Tanlash</button>
+    </div>
+    <p class="sub" id="prayerStatus">Namoz vaqtlari uchun server API ulanishi talab qilinadi.</p>
+  </section>
+
+  <div class="section-title" id="quickTitle">Tezkor kirish</div>
+  <div class="quick">
+    <button data-open="4"><strong>🌅 Tonggi zikrlar</strong><span class="sub">Zikr va tasbeh</span></button>
+    <button data-open="4"><strong>🌙 Kechki zikrlar</strong><span class="sub">Kechki zikrlar to‘plami</span></button>
+  </div>
+
+  <div class="section-title" id="allTitle">Barcha bo‘limlar</div>
+  <input class="search" id="search" placeholder="Bo‘limlarni qidirish...">
+  <div class="grid" id="sections"></div>
+
+  <section id="detail" class="hidden">
+    <button class="outline-btn back" id="back">← Bosh sahifaga qaytish</button>
+    <div class="panel">
+      <div class="eyebrow" id="detailNumber">TAQVO PRO MAX</div>
+      <h2 id="detailTitle"></h2>
+      <div id="detailContent"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div>TAQVO PRO MAX • Ilm va ibodat sari</div>
+    <a href="https://t.me/hakiymqalb" target="_blank" rel="noopener">Telegram kanal</a>
+    <div><a id="instagramLink" href="#" target="_blank" rel="noopener">Instagram profilini sozlash kerak</a></div>
+    <div>Qur’on va hadis matnlari ishonchli manbalardan tekshirilishi lozim.</div>
+  </footer>
+</div>
+
+<script src="./paket1.js"></script>
+</body>
+</html>
