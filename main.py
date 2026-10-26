@@ -622,10 +622,10 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=False)
     log.info("Bot ishga tushdi")
     try:
-        await dp.start_polling(bot)
+               await dp.start_polling(bot)
     finally:
-        await session.close()
-
+        await bot.session.close()
+        await runner.cleanup() 
 
 if __name__ == "__main__":
     asyncio.run(main())
