@@ -1,3 +1,4 @@
+
 import os
 import json
 import hmac
@@ -17,7 +18,7 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "taqvo.db")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-app = FastAPI(title="TAQVO PRO MAX API", version="1.0.0")
+app = FastAPI(title="TAQVO PRO MAX API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,27 +29,19 @@ app.add_middleware(
 )
 
 
-def get_db():
+def connect_db():
     con = sqlite3.connect(DATABASE_PATH)
     con.row_factory = sqlite3.Row
     return con
 
 
 def init_db():
-    with get_db() as con:
+    with connect_db() as con:
         con.execute("""
             CREATE TABLE IF NOT EXISTS scores (
                 telegram_id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 score INTEGER NOT NULL DEFAULT 0,
-                updated_at INTEGER NOT NULL
-            )
-        """)
-        con.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                telegram_id TEXT PRIMARY KEY,
-                name TEXT,
-                subscribed INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL
             )
         """)
@@ -61,7 +54,7 @@ def validate_init_data(raw: str) -> dict:
     if not BOT_TOKEN or not raw:
         raise HTTPException(
             status_code=401,
-            detail="Telegram initData yoki BOT_TOKEN sozlanmagan."
+            detail="Telegram ma’lumotlari yoki BOT_TOKEN sozlanmagan."
         )
 
     try:
@@ -73,42 +66,42 @@ def validate_init_data(raw: str) -> dict:
         auth_date = int(values.get("auth_date", "0"))
 
         if not received_hash:
-            raise ValueError("hash missing")
+            raise ValueError()
 
-        if time.time() - auth_date > 86400 or auth_date > time.time() + 60:
-            raise ValueError("initData expired")
+        if time.time() - auth_date > 86400:
+            raise ValueError()
 
         check_string = "\n".join(
             f"{key}={value}"
             for key, value in sorted(values.items())
         )
 
-        secret_key = hmac.new(
+        secret = hmac.new(
             b"WebAppData",
             BOT_TOKEN.encode(),
             hashlib.sha256
         ).digest()
 
-        calculated_hash = hmac.new(
-            secret_key,
+        expected = hmac.new(
+            secret,
             check_string.encode(),
             hashlib.sha256
         ).hexdigest()
 
-        if not hmac.compare_digest(calculated_hash, received_hash):
-            raise ValueError("hash mismatch")
+        if not hmac.compare_digest(expected, received_hash):
+            raise ValueError()
 
         user = json.loads(values["user"])
 
         if not user.get("id"):
-            raise ValueError("user missing")
+            raise ValueError()
 
         return user
 
     except Exception:
         raise HTTPException(
             status_code=401,
-            detail="Telegram ma’lumotlarini tekshirish muvaffaqiyatsiz."
+            detail="Telegram tekshiruvi muvaffaqiyatsiz."
         )
 
 
@@ -116,7 +109,7 @@ async def is_subscribed(user_id: int) -> bool:
     if not BOT_TOKEN:
         raise HTTPException(
             status_code=503,
-            detail="Render sozlamalarida BOT_TOKEN yo‘q."
+            detail="Render’da BOT_TOKEN sozlanmagan."
         )
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
@@ -181,25 +174,9 @@ def health():
 
 
 @app.post("/api/subscription")
-async def check_subscription(payload: InitDataInput):
+async def subscription(payload: InitDataInput):
     user = validate_init_data(payload.init_data)
     subscribed = await is_subscribed(int(user["id"]))
-
-    with get_db() as con:
-        con.execute("""
-            INSERT INTO users
-                (telegram_id, name, subscribed, updated_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(telegram_id) DO UPDATE SET
-                name = excluded.name,
-                subscribed = excluded.subscribed,
-                updated_at = excluded.updated_at
-        """, (
-            str(user["id"]),
-            user.get("first_name", "Foydalanuvchi"),
-            int(subscribed),
-            int(time.time())
-        ))
 
     return {"subscribed": subscribed}
 
@@ -221,7 +198,7 @@ async def save_score(payload: ScoreInput):
         or "Foydalanuvchi"
     )[:64]
 
-    with get_db() as con:
+    with connect_db() as con:
         con.execute("""
             INSERT INTO scores
                 (telegram_id, name, score, updated_at)
@@ -241,8 +218,8 @@ async def save_score(payload: ScoreInput):
 
 
 @app.get("/api/ranking")
-def get_ranking():
-    with get_db() as con:
+def ranking():
+    with connect_db() as con:
         rows = con.execute("""
             SELECT name, score
             FROM scores
@@ -266,7 +243,7 @@ async def ask_ai(payload: AskInput):
     if not OPENAI_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="Render’da OPENAI_API_KEY sozlanmagan."
+            detail="OPENAI_API_KEY sozlanmagan."
         )
 
     body = {
@@ -277,10 +254,10 @@ async def ask_ai(payload: AskInput):
                 "role": "system",
                 "content": (
                     "Siz TAQVO AI, Islomiy savollarga ehtiyotkor "
-                    "javob beruvchi yordamchisiz. Qur’on oyati yoki "
-                    "hadis manbasini to‘qib chiqarmang. Manbani "
-                    "aniq bilmasangiz, buni ayting. Fiqhiy masalalarda "
-                    "mazhablar o‘rtasidagi farqlarni hisobga oling. "
+                    "javob beruvchi yordamchisiz. Qur’on va hadis "
+                    "manbalarini to‘qib chiqarmang. Manbani "
+                    "bilmasangiz, buni ochiq ayting. Fiqhiy "
+                    "masalalarda mazhablar farqini hisobga oling. "
                     "O‘zingizni mufti deb tanishtirmang. "
                     "O‘zbek tilida javob bering."
                 )
@@ -306,7 +283,7 @@ async def ask_ai(payload: AskInput):
         if response.status_code >= 400:
             raise HTTPException(
                 status_code=502,
-                detail="AI provayderida xatolik. Kalit va limitni tekshiring."
+                detail="AI xizmatida xatolik. Kalit va limitni tekshiring."
             )
 
         data = response.json()
