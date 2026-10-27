@@ -1,401 +1,769 @@
 
 "use strict";
 
-/* TAQVO PRO MAX — asosiy interfeys */
-const API = "https://taqvo-bot-api.onrender.com";
-const $ = id => document.getElementById(id);
+(() => {
+  const API = "https://taqvo-bot-api.onrender.com";
+  const tg = window.Telegram?.WebApp;
 
-const MENU = [
- ["quran","📖","Qur’oni Karim","114 sura"],
- ["recitation","🎧","Qur’on qiroatlari","Qorilar va audio"],
- ["tasbih","📿","Tasbeh","Zikr sanagichi"],
- ["morning","🌅","Tonggi zikrlar","Tonggi zikrlar"],
- ["evening","🌙","Kechki zikrlar","Kechki zikrlar"],
- ["prayer","🕌","Namoz vaqtlari","Shahar bo‘yicha"],
- ["duas","🤲","Sahih duolar","Duolar va ma’nolari"],
- ["hadith","📜","Hadislar","Hadislarni o‘rganish"],
- ["forty","☪️","Qirq farz","O‘rganish"],
- ["duties","🧭","Asosiy burchlar","Diniy bilimlar"],
- ["foundations","🌿","Islom asoslari","Asosiy bilimlar"],
- ["sirah","🕋","Payg‘ambarimiz ﷺ siyratlari","Siyrat bosqichlari"],
- ["quiz","🎯","Siyrat o‘yini","Savollar va ballar"],
- ["ranking","🏆","Reyting","Medallar va natijalar"],
- ["media","🎬","Islomiy kino va multfilmlar","Ishonchli manbalar"],
- ["ai","🤖","TAQVO AI","Savol-javob"],
- ["settings","🔤","Til va sozlamalar","Lotin / Кирилл"]
-];
+  tg?.ready();
+  tg?.expand();
 
-const ZIKR = [
- {a:"سُبْحَانَ اللَّهِ",t:"Subhanalloh",m:"Alloh barcha nuqsonlardan pokdir.",n:33,src:"Sahih Muslim 597"},
- {a:"الْحَمْدُ لِلَّهِ",t:"Alhamdulillah",m:"Barcha hamd Allohgadir.",n:33,src:"Sahih Muslim 597"},
- {a:"اللَّهُ أَكْبَرُ",t:"Allohu akbar",m:"Alloh eng buyukdir.",n:34,src:"Sahih Muslim 597"},
- {a:"أَسْتَغْفِرُ اللَّهَ",t:"Astag‘firulloh",m:"Allohdan mag‘firat so‘rayman.",n:3,src:"Sahih Muslim 591"},
- {a:"لَا إِلَهَ إِلَّا اللَّهُ",t:"La ilaha illalloh",m:"Allohdan boshqa haq iloh yo‘q.",n:100,src:"Sahih Muslim 2691"}
-];
+  const $ = (id) => document.getElementById(id);
 
-const RECITERS = [
- {name:"Mishary Rashid Alafasy",id:"ar.alafasy"},
- {name:"Abdul Basit — Murattal",id:"ar.abdulbasitmurattal"},
- {name:"Abdurrahman As-Sudais",id:"ar.abdurrahmaansudais"},
- {name:"Maher Al Muaiqly",id:"ar.mahermuaiqly"},
- {name:"Saud Al-Shuraim",id:"ar.saoodshuraym"},
- {name:"Hani Ar-Rifai",id:"ar.hanirifai"}
-];
+  const sections = [
+    ["quran", "📖", "Qur’oni Karim"],
+    ["audio", "🎧", "Qur’on qiroatlari"],
+    ["tasbeh", "📿", "Tasbeh"],
+    ["morning", "🌅", "Tonggi zikrlar"],
+    ["evening", "🌙", "Kechgi zikrlar"],
+    ["prayer", "🕌", "Namoz vaqtlari"],
+    ["duas", "🤲", "Sahih duolar"],
+    ["hadith", "📜", "Hadislar"],
+    ["farz", "✅", "Qirq farz"],
+    ["duties", "🧭", "Asosiy burchlar"],
+    ["basics", "☪️", "Islom asoslari"],
+    ["sirah", "🌟", "Payg‘ambarimiz ﷺ siyrati"],
+    ["quiz", "🎯", "Siyrat viktorinasi"],
+    ["ranking", "🏆", "Umumiy reyting"],
+    ["movies", "🎬", "Islomiy filmlar"],
+    ["ai", "✨", "TAQVO AI"],
+    ["settings", "⚙️", "Til va sozlamalar"]
+  ];
 
-let suras = [];
-let zikrIndex = 0;
-let zikrCount = 0;
-let isCyrillic = false;
-let quizIndex = 0;
-let quizScore = 0;
-let quizQuestions = [];
-
-function safe(value) {
- return String(value ?? "").replace(/[&<>"']/g, ch => ({
-  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
- }[ch]));
-}
-
-async function getJSON(url, options) {
- const response = await fetch(url, options);
- if (!response.ok) throw new Error("HTTP " + response.status);
- return response.json();
-}
-
-/* Menyu */
-function renderMenu(filter = "") {
- $("menu").innerHTML = "";
- MENU.filter(item =>
-  (item[2] + " " + item[3]).toLowerCase().includes(filter.toLowerCase())
- ).forEach(item => {
-  const button = document.createElement("button");
-  button.className = "tile";
-  button.innerHTML =
-   `<span class="emoji">${item[1]}</span><b>${safe(item[2])}</b><small>${safe(item[3])}</small>`;
-  button.addEventListener("click", () => openPage(item[0]));
-  $("menu").appendChild(button);
- });
-}
-
-/* Tanlangan bo‘limdan boshqa bosh sahifa qismlarini yashirish */
-function page(title, html) {
- $("pageTitle").textContent = title;
- $("content").innerHTML = html;
- $("page").classList.remove("hidden");
- $("menu").classList.add("hidden");
- $("search").classList.add("hidden");
- $("allHeading").classList.add("hidden");
- document.querySelector(".hero")?.classList.add("hidden");
- document.querySelector(".quick")?.classList.add("hidden");
- document.querySelectorAll(".section-title").forEach(el => el.classList.add("hidden"));
- window.scrollTo({top:0,behavior:"smooth"});
-}
-
-function home() {
- $("page").classList.add("hidden");
- $("menu").classList.remove("hidden");
- $("search").classList.remove("hidden");
- $("allHeading").classList.remove("hidden");
- document.querySelector(".hero")?.classList.remove("hidden");
- document.querySelector(".quick")?.classList.remove("hidden");
- document.querySelectorAll(".section-title").forEach(el => el.classList.remove("hidden"));
- window.scrollTo({top:0,behavior:"smooth"});
-}
-$("back").onclick = home;
-
-/* Qur’oni Karim — suralar ro‘yxati, arabcha matn va tarjima */
-async function loadSuras() {
- page("Qur’oni Karim",'<p class="muted">Suralar yuklanmoqda...</p>');
- try {
-  const result = await getJSON("https://api.alquran.cloud/v1/surah");
-  suras = result.data || [];
-  $("content").innerHTML =
-   '<input id="surahSearch" placeholder="Sura nomini qidiring"><div id="surahList"></div>';
-  const draw = () => {
-   const query = $("surahSearch").value.toLowerCase();
-   $("surahList").innerHTML = "";
-   suras.filter(s =>
-    (s.englishName + " " + s.name + " " + s.number).toLowerCase().includes(query)
-   ).forEach(s => {
-    const b = document.createElement("button");
-    b.className = "list-btn";
-    b.innerHTML = `<b>${s.number}. ${safe(s.englishName)}</b>
-     <div class="arabic">${safe(s.name)}</div>
-     <span class="small">${s.numberOfAyahs} oyat</span>`;
-    b.onclick = () => loadSurah(s.number,s.englishName);
-    $("surahList").appendChild(b);
-   });
+  const state = {
+    currentSection: null,
+    surahs: [],
+    zikrCounts: {},
+    quizQuestions: [],
+    quizIndex: 0,
+    quizScore: 0,
+    city: "Karagandy",
+    country: "Kazakhstan",
+    method: 3,
+    language: "uz"
   };
-  $("surahSearch").oninput = draw;
-  draw();
- } catch (e) {
-  $("content").innerHTML = '<div class="note">Suralar yuklanmadi. Internetni tekshirib, qayta urinib ko‘ring.</div><button class="btn" id="retry">Qayta urinish</button>';
-  $("retry").onclick = loadSuras;
- }
-}
 
-async function loadSurah(number,name) {
- page(name,"<p>Oyatlar yuklanmoqda...</p>");
- try {
-  const [arabic,translation] = await Promise.all([
-   getJSON(`https://api.alquran.cloud/v1/surah/${number}/quran-uthmani`),
-   getJSON(`https://api.alquran.cloud/v1/surah/${number}/uz.sodik`)
-  ]);
-  const verses = arabic.data.ayahs;
-  const translated = translation.data.ayahs;
-  $("content").innerHTML = `
-   <button class="btn" id="surahBack">← Suralar</button>
-   <h3>${safe(name)}</h3>
-   <label for="qari">Qiroatni tanlang</label>
-   <select id="qari">${RECITERS.map((r,i)=>`<option value="${i}">${safe(r.name)}</option>`).join("")}</select>
-   <audio id="surahAudio" controls preload="metadata"></audio>
-   <button class="btn gold" id="playAudio">▶ Qiroatni tinglash</button>
-   <div id="verseList"></div>`;
-  $("surahBack").onclick = loadSuras;
-  $("playAudio").onclick = () => {
-   const reciter = RECITERS[Number($("qari").value)];
-   $("surahAudio").src =
-    `https://cdn.islamic.network/quran/audio-surah/128/${reciter.id}/${number}.mp3`;
-   $("surahAudio").play().catch(() => alert("Bu qori audiosi manbada topilmadi yoki ijro etilmadi."));
-  };
-  $("verseList").innerHTML = verses.map((v,i) => `
-   <article class="item">
-    <div class="arabic">${safe(v.text)} ۞ ${v.numberInSurah}</div>
-    <p>${safe(translated[i]?.text || "Tarjima mavjud emas")}</p>
-   </article>`).join("");
- } catch (e) {
-  $("content").innerHTML = '<div class="note">Sura matni yoki tarjimasi yuklanmadi. Qayta urinib ko‘ring.</div><button class="btn" id="retrySurah">Qayta urinish</button>';
-  $("retrySurah").onclick = () => loadSurah(number,name);
- }
-}
+  const adhkar = [
+    {
+      arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+      title: "Subhanallohi va bihamdih",
+      meaning: "Allohni hamd bilan poklab yod etaman.",
+      count: 100,
+      source: "Sahih al-Buxoriy 6405; Sahih Muslim 2691."
+    },
+    {
+      arabic: "أَسْتَغْفِرُ اللَّهَ",
+      title: "Astag‘firulloh",
+      meaning: "Allohdan mag‘firat so‘rayman.",
+      count: 3,
+      source: "Sahih Muslim 591 — namozdan keyingi istig‘for."
+    },
+    {
+      arabic: "سُبْحَانَ اللَّهِ",
+      title: "Subhanalloh",
+      meaning: "Alloh barcha nuqsonlardan pokdir.",
+      count: 33,
+      source: "Sahih Muslim 595 — namozdan keyingi tasbeh."
+    },
+    {
+      arabic: "الْحَمْدُ لِلَّهِ",
+      title: "Alhamdulillah",
+      meaning: "Barcha hamd Allohga xosdir.",
+      count: 33,
+      source: "Sahih Muslim 595 — namozdan keyingi tasbeh."
+    },
+    {
+      arabic: "اللَّهُ أَكْبَرُ",
+      title: "Allohu akbar",
+      meaning: "Alloh eng buyukdir.",
+      count: 34,
+      source: "Sahih Muslim 595 — namozdan keyingi zikr."
+    }
+  ];
 
-/* Qiroatlar */
-async function recitation() {
- page("Qur’on qiroatlari",`
-  <p>Qorini tanlang va 114 suradan birini bosing.</p>
-  <select id="reciter">${RECITERS.map((r,i)=>`<option value="${i}">${safe(r.name)}</option>`).join("")}</select>
-  <input id="recSearch" placeholder="Sura qidirish">
-  <div id="recList"></div>`);
- try {
-  if (!suras.length) {
-   const data = await getJSON("https://api.alquran.cloud/v1/surah");
-   suras = data.data || [];
+  const quizBank = [
+    {
+      q: "Hijrat qaysi shaharga bo‘lgan?",
+      a: ["Madina", "Shom", "Toif", "Yaman"],
+      correct: 0,
+      explanation: "Musulmonlar Makkadan Madinaga hijrat qilganlar."
+    },
+    {
+      q: "Birinchi vahiy qaysi g‘orda nozil bo‘lgan?",
+      a: ["Savr", "Hiro", "Uhud", "Qubo"],
+      correct: 1,
+      explanation: "Birinchi vahiy Hiro g‘orida nozil bo‘lgan."
+    },
+    {
+      q: "Qur’onning birinchi surasi qaysi?",
+      a: ["Baqara", "Ixlos", "Fotiha", "Nos"],
+      correct: 2,
+      explanation: "Mushaf tartibidagi birinchi sura Fotiha surasidir."
+    },
+    {
+      q: "Badr jangi qaysi hijriy yilda bo‘lgan?",
+      a: ["1-yil", "2-yil", "5-yil", "8-yil"],
+      correct: 1,
+      explanation: "Badr jangi hijratning ikkinchi yilida bo‘lgan."
+    },
+    {
+      q: "Payg‘ambarimiz ﷺ qaysi qabiladan edilar?",
+      a: ["Quraysh", "Aws", "Xazraj", "Saqqif"],
+      correct: 0,
+      explanation: "Rasululloh ﷺ Quraysh qabilasidan edilar."
+    }
+  ];
+
+  function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]);
   }
-  const draw = () => {
-   const q = $("recSearch").value.toLowerCase();
-   $("recList").innerHTML = "";
-   suras.filter(s => (s.englishName+" "+s.number).toLowerCase().includes(q)).forEach(s => {
-    const b = document.createElement("button");
-    b.className = "list-btn";
-    b.textContent = `${s.number}. ${s.englishName} — ${s.name}`;
-    b.onclick = () => {
-     const r = RECITERS[Number($("reciter").value)];
-     page("Qiroat — "+s.englishName,`
-      <button class="btn" id="recBack">← Qorilar ro‘yxati</button>
-      <p>${safe(r.name)}</p>
-      <p class="arabic">${safe(s.name)}</p>
-      <audio id="recAudio" controls preload="metadata" src="https://cdn.islamic.network/quran/audio-surah/128/${r.id}/${s.number}.mp3"></audio>
-      <p class="small">Pleyerda vaqt, pauza va davom ettirish boshqaruvlari mavjud. Audio manbasi ishlashi internet va manba mavjudligiga bog‘liq.</p>`);
-     $("recBack").onclick = recitation;
-    };
-    $("recList").appendChild(b);
-   });
-  };
-  $("recSearch").oninput = draw;
-  draw();
- } catch(e) {
-  $("content").innerHTML = '<div class="note">Qiroat ro‘yxatini yuklab bo‘lmadi.</div>';
- }
-}
 
-/* Tasbeh */
-function tasbih(index = 0) {
- zikrIndex = index % ZIKR.length;
- zikrCount = 0;
- const z = ZIKR[zikrIndex];
- page("Tasbeh",`
-  <div class="arabic">${z.a}</div>
-  <h3>${safe(z.t)}</h3>
-  <p>${safe(z.m)}</p>
-  <div class="note">Manba: ${safe(z.src)}. Takror soni aynan zikrning shakliga mos tekshirilishi lozim.</div>
-  <div class="counter">
-   <div class="count" id="counter">0 / ${z.n}</div>
-   <button class="count-btn" id="countButton">ZIKR</button>
-   <p><button class="btn" id="reset">Sanoqni tiklash</button>
-   <button class="btn gold" id="next">Keyingi zikr →</button></p>
-  </div>`);
- $("countButton").onclick = () => {
-  if (zikrCount < z.n) zikrCount++;
-  $("counter").textContent = `${zikrCount} / ${z.n}`;
-  if (window.Telegram?.WebApp?.HapticFeedback) {
-   window.Telegram.WebApp.HapticFeedback.impactOccurred("light");
+  function apiHeaders() {
+    return { "Content-Type": "application/json" };
   }
-  if (zikrCount === z.n) alert("Sanoq tugadi. Keyingi zikrga o‘tishingiz mumkin.");
- };
- $("reset").onclick = () => {
-  zikrCount = 0;
-  $("counter").textContent = `0 / ${z.n}`;
- };
- $("next").onclick = () => tasbih(zikrIndex+1);
-}
 
-function adhkar(kind) {
- page(kind==="morning"?"Tonggi zikrlar":"Kechki zikrlar",
-  '<p class="muted">Zikrni tanlang. Har bir zikrning to‘liq sahih manbasi va takror sonini alohida tekshirish zarur.</p><div id="adhkarList"></div>');
- ZIKR.forEach((z,i) => {
-  const b = document.createElement("button");
-  b.className = "list-btn";
-  b.innerHTML = `<div class="arabic">${z.a}</div><b>${safe(z.t)}</b><br><span class="small">${safe(z.src)}</span>`;
-  b.onclick = () => tasbih(i);
-  $("adhkarList").appendChild(b);
- });
-}
+  async function apiFetch(path, options = {}) {
+    const response = await fetch(API + path, options);
+    const data = await response.json().catch(() => ({}));
 
-/* Namoz vaqtlari */
-async function showPrayerTimes(city,target="prayers",status="prayerStatus") {
- if (!city.trim()) {
-  if ($(status)) $(status).textContent = "Shahar nomini kiriting.";
-  return;
- }
- if ($(status)) $(status).textContent = "Namoz vaqtlari olinmoqda...";
- try {
-  const data = await getJSON(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=3`);
-  const t = data.data.timings;
-  const vals = [["Bomdod",t.Fajr],["Peshin",t.Dhuhr],["Asr",t.Asr],["Shom",t.Maghrib],["Xufton",t.Isha]];
-  $(target).innerHTML = vals.map(([n,v])=>`<div class="prayer"><b>${n}</b><span>${safe(v)}</span></div>`).join("");
-  if ($(status)) $(status).textContent = `Shahar: ${city}. Vaqtlarni mahalliy masjid taqvimi bilan tekshiring.`;
- } catch(e) {
-  if ($(status)) $(status).textContent = "Vaqtlar olinmadi. Shahar nomi yoki internetni tekshiring.";
- }
-}
-async function prayerPage() {
- page("Namoz vaqtlari",`
-  <p>Shahar nomini kiriting. Boshqa davlatdagi shaharlar uchun ham qidirish mumkin.</p>
-  <input id="citySearch" placeholder="Masalan, Karaganda, Almaty, Tashkent">
-  <button class="btn gold" id="cityLoad">Namoz vaqtlarini olish</button>
-  <div class="prayers" id="cityPrayers"></div>
-  <p id="cityStatus" class="small"></p>`);
- $("cityLoad").onclick = () => showPrayerTimes($("citySearch").value,"cityPrayers","cityStatus");
-}
+    if (!response.ok) {
+      throw new Error(data.detail || "Server bilan bog‘lanishda xato.");
+    }
 
-/* Siyrat o‘yini — namuna savollar. Katta, manbalari tekshirilgan savollar bazasi hali alohida qo‘shilishi kerak. */
-const QUESTIONS = [
- {q:"Payg‘ambarimiz ﷺ qaysi shaharda tug‘ilganlar?",a:["Makka","Madina","Toif","Quddus"],correct:0,why:"Payg‘ambarimiz ﷺ Makkada tavallud topganlar."},
- {q:"Birinchi vahiy qaysi g‘orda nozil bo‘lgan?",a:["Savr","Hiro","Uhud","Quba"],correct:1,why:"Birinchi vahiy Hiro g‘orida nozil bo‘lgan."},
- {q:"Hijrat qaysi shaharga bo‘lgan?",a:["Shom","Yaman","Madina","Toif"],correct:2,why:"Musulmonlar Madinaga hijrat qilganlar."}
-];
-function quiz() {
- quizScore = 0;
- quizIndex = 0;
- quizQuestions = [...QUESTIONS].sort(()=>Math.random()-0.5);
- showQuestion();
-}
-function showQuestion() {
- if (quizIndex >= quizQuestions.length) {
-  page("O‘yin yakuni",`<h3>Natija: ${quizScore} / ${quizQuestions.length}</h3><p>Bu hozircha kichik namuna. To‘liq 50 savolli, umumiy reytingga ulangan o‘yin uchun tekshirilgan savollar bazasi va server ball mexanizmi kerak.</p><button class="btn gold" id="playAgain">Qayta o‘ynash</button>`);
-  $("playAgain").onclick = quiz;
-  return;
- }
- const q = quizQuestions[quizIndex];
- page(`Siyrat o‘yini — ${quizIndex+1}/${quizQuestions.length}`,
-  `<h3>${safe(q.q)}</h3><div id="answers"></div><div id="explanation"></div>`);
- q.a.forEach((answer,i) => {
-  const b = document.createElement("button");
-  b.className = "list-btn";
-  b.textContent = `${"ABCD"[i]}. ${answer}`;
-  b.onclick = () => {
-   document.querySelectorAll("#answers button").forEach(x=>x.disabled=true);
-   const correct = i===q.correct;
-   if (correct) quizScore++;
-   $("explanation").innerHTML = `<div class="note">${correct?"To‘g‘ri javob!":"To‘g‘ri javob: "+safe(q.a[q.correct])}<br>${safe(q.why)}</div><button class="btn gold" id="nextQuestion">Keyingi savol</button>`;
-   $("nextQuestion").onclick = () => {quizIndex++;showQuestion();};
-  };
-  $("answers").appendChild(b);
- });
-}
+    return data;
+  }
 
-/* Bo‘limlar */
-function openPage(id) {
- if (id==="quran") return loadSuras();
- if (id==="recitation") return recitation();
- if (id==="tasbih") return tasbih();
- if (id==="morning"||id==="evening") return adhkar(id);
- if (id==="prayer") return prayerPage();
- if (id==="quiz") return quiz();
+  function renderMenu() {
+    $("sectionMenu").innerHTML = sections.map(([id, icon, title]) => `
+      <button class="tile" type="button" data-open="${id}">
+        <span class="tile-icon">${icon}</span>
+        <span class="tile-title">${title}</span>
+        <span class="tile-sub">Bo‘limni ochish</span>
+      </button>
+    `).join("");
+  }
 
- if (id==="ai") {
-  page("TAQVO AI",`
-   <p>Islomiy savolingizni yozing.</p>
-   <textarea id="question" rows="4" placeholder="Savolingiz..."></textarea>
-   <button class="btn gold" id="ask">Savol yuborish</button>
-   <div id="answer"></div>
-   <p class="small">AI olim yoki mufti emas. Murakkab fatvolarni malakali olim bilan tekshiring.</p>`);
-  $("ask").onclick = async () => {
-   const question = $("question").value.trim();
-   if (!question) return;
-   $("answer").textContent = "Javob olinmoqda...";
-   const init_data = window.Telegram?.WebApp?.initData || "";
-   try {
-    const response = await fetch(API+"/api/ask",{
-     method:"POST",
-     headers:{"Content-Type":"application/json"},
-     body:JSON.stringify({question,init_data})
-    });
-    const result = await response.json();
-    $("answer").textContent = response.ok ? result.answer : (result.detail || "AI xizmatida xato.");
-   } catch(e) {
-    $("answer").textContent = "Serverga ulanib bo‘lmadi. Render holatini tekshiring.";
-   }
-  };
-  return;
- }
+  function showHome() {
+    state.currentSection = null;
+    $("homeScreen").classList.remove("hidden");
+    $("sectionScreen").classList.add("hidden");
+  }
 
- if (id==="settings") {
-  page("Til va havolalar",`
-   <p>Til tanlang:</p>
-   <button class="btn" id="latin">Lotin</button>
-   <button class="btn gold" id="cyrillic">Кирилл</button>
-   <p><a href="https://t.me/hakiymqalb" target="_blank" rel="noopener">Telegram kanali</a></p>
-   <p>Instagram havolasini haqiqiy profilingiz bilan sozlash kerak.</p>`);
-  $("latin").onclick = () => setLanguage(false);
-  $("cyrillic").onclick = () => setLanguage(true);
-  return;
- }
+  function showSection(id) {
+    const section = sections.find((item) => item[0] === id);
+    if (!section) return;
 
- const info = {
-  duas:"Sahih duolar: arabcha matn, tarjima, fazilat va aniq Qur’on/hadis manbalari bilan to‘liq to‘plam alohida tekshirib kiritilishi kerak.",
-  hadith:"100 sahih hadis: arabcha matn, o‘zbekcha tarjima va aniq manba raqamlari bilan to‘liq to‘plam hali qo‘shilishi kerak.",
-  forty:"Qirq farz matni ishonchli manba va tanlangan ta’lim an’anasi bilan tekshirib kiritilishi kerak.",
-  duties:"Asosiy burchlar bo‘limiga dalillar va mazhab farqlari tekshirilgan kontent qo‘shilishi kerak.",
-  foundations:"Islom asoslari Qur’on, sahih hadis va ishonchli ilmiy sharhlar asosida to‘ldirilishi kerak.",
-  sirah:"Siyrat voqealari bosqichma-bosqich, manbalari va rivoyat darajalari bilan to‘ldirilishi kerak.",
-  ranking:"Haqiqiy global reyting uchun doimiy ma’lumotlar bazasi va server ball tekshiruvlari kerak.",
-  media:"Faqat qonuniy va tekshirilgan video manbalari joylashtirilishi kerak."
- };
- const selected = MENU.find(x=>x[0]===id);
- page(selected?selected[2]:"TAQVO PRO MAX",`<div class="note">${safe(info[id]||"Bu bo‘lim uchun tekshirilgan kontent va tegishli xizmat integratsiyasi kerak.")}</div>`);
-}
+    state.currentSection = id;
+    $("homeScreen").classList.add("hidden");
+    $("sectionScreen").classList.remove("hidden");
 
-/* Lotin/kirill rejimi — menyu va asosiy sarlavhalar */
-function setLanguage(toCyr) {
- isCyrillic = toCyr;
- $("language").textContent = isCyrillic ? "Lotin" : "Кирилл";
- $("allHeading").textContent = isCyrillic ? "17 та бўлим" : "17 ta bo‘lim";
- $("prayerHeading").textContent = isCyrillic ? "Намоз вақтлари" : "Namoz vaqtlari";
- $("heroTitle").textContent = isCyrillic ? "Қуръон ва зикр билан қалбни ёритинг" : "Qur’on va zikr bilan qalbni yoriting";
- $("heroDesc").textContent = isCyrillic ? "Ишончли манбалар ва фойдали ибодатлар бир жойда." : "Ishonchli manbalar va foydali ibodatlar bir joyda.";
- renderMenu($("search").value);
-}
+    $("sectionContent").innerHTML = `
+      <div class="card">
+        <div class="muted">TAQVO PRO MAX</div>
+        <h1>${section[1]} ${escapeHTML(section[2])}</h1>
+      </div>
+      ${sectionTemplate(id)}
+    `;
 
-/* Ishga tushirish */
-$("language").onclick = () => setLanguage(!isCyrillic);
-$("search").addEventListener("input",e=>renderMenu(e.target.value));
-$("loadPrayer").onclick = () => showPrayerTimes($("city").value,"prayers","prayerStatus");
-document.querySelectorAll("[data-open]").forEach(button=>{
- button.addEventListener("click",()=>openPage(button.dataset.open));
-});
-if (window.Telegram?.WebApp) {
- window.Telegram.WebApp.ready();
- window.Telegram.WebApp.expand();
-}
-renderMenu();
+    if (id === "quran") loadSurahs();
+    if (id === "audio") renderAudioSection();
+    if (["tasbeh", "morning", "evening"].includes(id)) renderAdhkar(id);
+    if (id === "prayer") renderPrayerForm();
+    if (id === "quiz") startQuiz();
+    if (id === "ranking") loadRanking();
+  }
+
+  function sectionTemplate(id) {
+    switch (id) {
+      case "quran":
+        return `
+          <div class="card">
+            <p class="muted">Qur’on suralarini yuklash uchun internet kerak.</p>
+            <input class="field" id="surahSearch" placeholder="Sura qidirish...">
+            <div id="surahList">Suralar yuklanmoqda...</div>
+            <div id="ayahList"></div>
+          </div>`;
+
+      case "audio":
+        return `
+          <div class="card">
+            <label for="reciterSelect">Qori tanlang</label>
+            <select class="field" id="reciterSelect">
+              <option value="ar.alafasy">Mishary Rashid Alafasy</option>
+              <option value="ar.abdulbasitmurattal">Abdul Basit Abdus Samad</option>
+              <option value="ar.abdurrahmaansudais">Abdurrahman As-Sudais</option>
+              <option value="ar.husary">Mahmoud Khalil Al-Husary</option>
+            </select>
+            <p class="muted">Audio manbasi API tomonidan beriladi. Barcha qori identifikatorlari ushbu API’da mavjud bo‘lishi kafolatlanmaydi.</p>
+            <div id="audioSurahList">Suralar yuklanmoqda...</div>
+            <div id="audioPlayer"></div>
+          </div>`;
+
+      case "tasbeh":
+      case "morning":
+      case "evening":
+        return `<div id="adhkarList"></div>`;
+
+      case "prayer":
+        return `
+          <div class="card">
+            <p class="muted">Namoz vaqtlari tashqi hisoblash API’sidan olinadi. Mahalliy masjid jadvalini ham tekshiring.</p>
+            <div id="prayerForm"></div>
+            <div id="prayerResult"></div>
+          </div>`;
+
+      case "duas":
+        return `
+          <div class="card">
+            <h2>Qur’ondagi duo</h2>
+            <div class="arabic">رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ</div>
+            <p><b>Robbana atina fid-dunya hasanatan va fil-akhirati hasanatan va qina azaban-nar.</b></p>
+            <p>Dunyoda ham, oxiratda ham yaxshilik ber va do‘zax azobidan saqla.</p>
+            <p class="muted">Qur’on, Baqara 2:201.</p>
+          </div>`;
+
+      case "hadith":
+        return `
+          <div class="card">
+            <h2>Niyat haqida</h2>
+            <p>“Amallar niyatlarga bog‘liqdir.”</p>
+            <p class="muted">Sahih al-Buxoriy 1; Sahih Muslim 1907.</p>
+            <p class="muted">Bu hozircha namuna; 100 hadislik to‘liq kutubxona hali qo‘shilmagan.</p>
+          </div>`;
+
+      case "farz":
+      case "duties":
+      case "basics":
+        return `
+          <div class="card">
+            <h2>O‘rganish bo‘limi</h2>
+            <p>Bu bo‘limga ishonchli manbalar bilan tekshirilgan to‘liq darslar kiritilishi kerak.</p>
+          </div>`;
+
+      case "sirah":
+        return `
+          <div class="card">
+            <h2>Rasululloh ﷺ siyrati</h2>
+            <p>Siyrat voqealari manbalar va rivoyatlarning ishonchlilik darajasi bilan bosqichma-bosqich to‘ldirilishi kerak.</p>
+          </div>`;
+
+      case "quiz":
+        return `<div id="quizContainer"></div>`;
+
+      case "ranking":
+        return `<div class="card"><div id="rankingContainer">Reyting yuklanmoqda...</div></div>`;
+
+      case "movies":
+        return `
+          <div class="card">
+            <h2>Video manbalari</h2>
+            <p>Faqat qonuniy manbalardagi filmlar va multfilmlar havolalarini qo‘shing.</p>
+            <a href="https://www.youtube.com/" target="_blank" rel="noopener">YouTube’ni ochish</a>
+          </div>`;
+
+      case "ai":
+        return `
+          <div class="card">
+            <h2>TAQVO AI</h2>
+            <textarea class="field" id="aiQuestion" rows="4" maxlength="4000" placeholder="Islomiy savolingizni yozing..."></textarea>
+            <button class="gold-button" id="askAIButton" type="button">Javob olish</button>
+            <div id="aiAnswer" class="list-item" aria-live="polite"></div>
+            <p class="muted">AI xato qilishi mumkin. Muhim diniy masalada malakali olimga murojaat qiling.</p>
+          </div>`;
+
+      case "settings":
+        return `
+          <div class="card">
+            <h2>Til va sozlamalar</h2>
+            <p>Til tugmasi hozircha faqat tanlovni o‘zgartiradi. To‘liq lotin-kirill tarjimasi hali kiritilmagan.</p>
+          </div>`;
+
+      default:
+        return `<div class="card">Bo‘lim topilmadi.</div>`;
+    }
+  }
+
+  async function loadSurahs() {
+    const list = $("surahList");
+
+    try {
+      const response = await fetch("https://api.alquran.cloud/v1/surah");
+      if (!response.ok) throw new Error();
+
+      const data = await response.json();
+      state.surahs = data.data || [];
+      renderSurahList();
+
+      $("surahSearch").addEventListener("input", renderSurahList);
+    } catch {
+      list.textContent = "Suralar yuklanmadi. Internetni tekshiring.";
+    }
+  }
+
+  function renderSurahList() {
+    const query = ($("surahSearch")?.value || "").toLowerCase();
+
+    $("surahList").innerHTML = state.surahs
+      .filter((surah) =>
+        `${surah.number} ${surah.englishName} ${surah.name}`
+          .toLowerCase().includes(query)
+      )
+      .map((surah) => `
+        <div class="list-item row">
+          <div>
+            <b>${surah.number}. ${escapeHTML(surah.englishName)}</b>
+            <div class="muted">${escapeHTML(surah.name)} · ${surah.numberOfAyahs} oyat</div>
+          </div>
+          <button type="button" data-surah="${surah.number}">O‘qish</button>
+        </div>
+      `).join("");
+  }
+
+  async function loadSurah(number) {
+    const output = $("ayahList");
+    output.textContent = "Oyatlar yuklanmoqda...";
+
+    try {
+      const response = await fetch(
+        `https://api.alquran.cloud/v1/surah/${number}`
+      );
+
+      if (!response.ok) throw new Error();
+
+      const result = await response.json();
+      const surah = result.data;
+
+      output.innerHTML = `
+        <div class="card">
+          <h2>${escapeHTML(surah.englishName)} — ${escapeHTML(surah.name)}</h2>
+          ${surah.ayahs.map((ayah) => `
+            <div class="list-item">
+              <div class="arabic">${escapeHTML(ayah.text)} ۞</div>
+              <div class="muted">${ayah.numberInSurah}-oyat</div>
+            </div>
+          `).join("")}
+        </div>`;
+    } catch {
+      output.textContent = "Oyatlarni yuklashda xatolik yuz berdi.";
+    }
+  }
+
+  async function renderAudioSection() {
+    const list = $("audioSurahList");
+
+    try {
+      const response = await fetch("https://api.alquran.cloud/v1/surah");
+      if (!response.ok) throw new Error();
+
+      const result = await response.json();
+
+      list.innerHTML = result.data.map((surah) => `
+        <div class="list-item row">
+          <div>
+            <b>${surah.number}. ${escapeHTML(surah.englishName)}</b>
+            <div class="muted">${escapeHTML(surah.name)}</div>
+          </div>
+          <button type="button" data-audio-surah="${surah.number}">Tinglash</button>
+        </div>
+      `).join("");
+    } catch {
+      list.textContent = "Suralar ro‘yxatini yuklab bo‘lmadi.";
+    }
+  }
+
+  async function playAudio(number) {
+    const player = $("audioPlayer");
+    const reciter = $("reciterSelect").value;
+
+    player.textContent = "Audio yuklanmoqda...";
+
+    try {
+      const response = await fetch(
+        `https://api.alquran.cloud/v1/surah/${number}/${encodeURIComponent(reciter)}`
+      );
+
+      if (!response.ok) throw new Error();
+
+      const result = await response.json();
+      const audioUrl = result.data?.ayahs?.[0]?.audio;
+
+      if (!audioUrl) throw new Error();
+
+      player.innerHTML = `
+        <div class="card">
+          <h3>${number}-sura</h3>
+          <audio controls preload="none" src="${escapeHTML(audioUrl)}"></audio>
+          <p class="muted">Audio fon rejimida ishlashi iPhone va brauzer tomonidan cheklanishi mumkin.</p>
+        </div>`;
+    } catch {
+      player.textContent = "Audio manbasi topilmadi. Boshqa qori tanlab ko‘ring.";
+    }
+  }
+
+  function renderAdhkar(section) {
+    const title = section === "morning"
+      ? "Tonggi zikrlar"
+      : section === "evening"
+        ? "Kechgi zikrlar"
+        : "Tasbeh";
+
+    $("adhkarList").innerHTML = `
+      <p class="muted">${title}. Bu ro‘yxat hozircha 5 ta namunaviy zikrdan iborat.</p>
+      ${adhkar.map((zikr, index) => {
+        const key = `${section}-${index}`;
+        const count = state.zikrCounts[key] || 0;
+
+        return `
+          <div class="card">
+            <div class="row">
+              <h3>${index + 1}. ${escapeHTML(zikr.title)}</h3>
+              <span class="gold-text">${zikr.count}×</span>
+            </div>
+            <div class="arabic">${zikr.arabic}</div>
+            <p>${escapeHTML(zikr.meaning)}</p>
+            <p class="muted">${escapeHTML(zikr.source)}</p>
+            <div class="counter" id="count-${key}">${count} / ${zikr.count}</div>
+            <div class="actions">
+              <button type="button" data-zikr="${key}">+1</button>
+              <button type="button" data-reset-zikr="${key}">Qayta</button>
+            </div>
+          </div>`;
+      }).join("")}
+    `;
+  }
+
+  function changeZikr(key, reset = false) {
+    const index = Number(key.split("-").at(-1));
+    const target = adhkar[index]?.count || 33;
+
+    state.zikrCounts[key] = reset
+      ? 0
+      : Math.min(target, (state.zikrCounts[key] || 0) + 1);
+
+    const element = $(`count-${key}`);
+    if (!element) return;
+
+    element.textContent = `${state.zikrCounts[key]} / ${target}`;
+
+    if (state.zikrCounts[key] === target) {
+      element.style.color = "#64d98b";
+    } else {
+      element.style.color = "";
+    }
+  }
+
+  function renderPrayerForm() {
+    $("prayerForm").innerHTML = `
+      <label for="cityInput">Shahar</label>
+      <input class="field" id="cityInput" value="${escapeHTML(state.city)}">
+
+      <label for="countryInput">Mamlakat</label>
+      <input class="field" id="countryInput" value="${escapeHTML(state.country)}">
+
+      <label for="methodInput">Hisoblash usuli</label>
+      <select class="field" id="methodInput">
+        <option value="3">Muslim World League</option>
+        <option value="4">Umm al-Qura</option>
+        <option value="1">Karachi</option>
+      </select>
+
+      <button class="gold-button" id="calculatePrayer" type="button">
+        Namoz vaqtlarini olish
+      </button>
+    `;
+  }
+
+  async function fetchPrayerTimes() {
+    const city = $("cityInput").value.trim();
+    const country = $("countryInput").value.trim();
+    const method = $("methodInput").value;
+    const result = $("prayerResult");
+
+    if (!city || !country) {
+      result.textContent = "Shahar va mamlakatni kiriting.";
+      return;
+    }
+
+    result.textContent = "Hisoblanmoqda...";
+
+    try {
+      const now = new Date();
+      const date = [
+        String(now.getDate()).padStart(2, "0"),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        now.getFullYear()
+      ].join("-");
+
+      const url = new URL(
+        `https://api.aladhan.com/v1/timingsByCity/${date}`
+      );
+
+      url.searchParams.set("city", city);
+      url.searchParams.set("country", country);
+      url.searchParams.set("method", method);
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error();
+
+      const data = await response.json();
+      if (data.code !== 200) throw new Error();
+
+      const times = data.data.timings;
+      const entries = [
+        ["Bomdod", times.Fajr],
+        ["Peshin", times.Dhuhr],
+        ["Asr", times.Asr],
+        ["Shom", times.Maghrib],
+        ["Xufton", times.Isha]
+      ];
+
+      state.city = city;
+      state.country = country;
+      state.method = Number(method);
+
+      $("cityLabel").textContent = `${city}, ${country}`;
+      $("prayerTimes").innerHTML = entries.map(([name, time]) => `
+        <div class="prayer">${name}<strong>${escapeHTML(time)}</strong></div>
+      `).join("");
+
+      result.innerHTML = `
+        <div class="card">
+          <h2>${escapeHTML(city)}, ${escapeHTML(country)}</h2>
+          ${entries.map(([name, time]) => `
+            <div class="list-item row">
+              <span>${name}</span>
+              <b class="gold-text">${escapeHTML(time)}</b>
+            </div>
+          `).join("")}
+          <p class="muted">Mahalliy masjid jadvali bilan solishtiring.</p>
+        </div>`;
+    } catch {
+      result.textContent = "Namoz vaqtlarini olishda xatolik yuz berdi.";
+    }
+  }
+
+  function startQuiz() {
+    state.quizQuestions = Array.from(
+      { length: 50 },
+      (_, index) => quizBank[index % quizBank.length]
+    );
+
+    state.quizIndex = 0;
+    state.quizScore = 0;
+
+    showQuestion();
+  }
+
+  function showQuestion() {
+    const question = state.quizQuestions[state.quizIndex];
+    if (!question) return;
+
+    $("quizContainer").innerHTML = `
+      <div class="card">
+        <div class="row">
+          <span class="gold-text">Savol ${state.quizIndex + 1}/50</span>
+          <span>Ball: ${state.quizScore}</span>
+        </div>
+        <h2>${escapeHTML(question.q)}</h2>
+        ${question.a.map((answer, index) => `
+          <button class="field" type="button" data-answer="${index}">
+            ${"ABCD"[index]}. ${escapeHTML(answer)}
+          </button>
+        `).join("")}
+        <p class="muted">
+          Eslatma: hozir 5 ta namuna savoli takrorlanadi.
+          50 ta noyob, tekshirilgan savol bazasi hali kiritilmagan.
+        </p>
+      </div>`;
+  }
+
+  async function answerQuestion(index) {
+    const question = state.quizQuestions[state.quizIndex];
+    if (!question) return;
+
+    if (index === question.correct) {
+      state.quizScore += 20;
+      alert("To‘g‘ri! +20 ball\n" + question.explanation);
+    } else {
+      alert(
+        "Noto‘g‘ri javob.\nTo‘g‘ri javob: " +
+        question.a[question.correct] +
+        "\n" + question.explanation
+      );
+    }
+
+    state.quizIndex += 1;
+
+    if (state.quizIndex >= state.quizQuestions.length) {
+      $("quizContainer").innerHTML = `
+        <div class="card">
+          <h2>Viktorina tugadi</h2>
+          <p>Jami ball: <b class="gold-text">${state.quizScore}</b></p>
+          <button class="gold-button" id="restartQuiz" type="button">
+            Qayta o‘ynash
+          </button>
+        </div>`;
+
+      await saveScore();
+      return;
+    }
+
+    showQuestion();
+  }
+
+  async function saveScore() {
+    const user = tg?.initDataUnsafe?.user;
+
+    if (!user || !tg?.initData) {
+      alert("Reytingga yozish uchun viktorinani Telegram Mini App ichida oching.");
+      return;
+    }
+
+    try {
+      await apiFetch("/api/score", {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          init_data: tg.initData,
+          name: user.first_name || "Foydalanuvchi",
+          score: state.quizScore
+        })
+      });
+    } catch (error) {
+      alert("Ballni saqlab bo‘lmadi: " + error.message);
+    }
+  }
+
+  async function loadRanking() {
+    const output = $("rankingContainer");
+
+    try {
+      const result = await apiFetch("/api/ranking");
+      const items = result.items || [];
+
+      output.innerHTML = items.length
+        ? items.map((user, index) => `
+            <div class="list-item row">
+              <b>${["🥇", "🥈", "🥉"][index] || `${index + 1}.`} ${escapeHTML(user.name)}</b>
+              <span class="gold-text">${user.score} ball</span>
+            </div>
+          `).join("")
+        : "Reytingda hozircha ma’lumot yo‘q.";
+    } catch {
+      output.textContent = "Reyting serveriga ulanib bo‘lmadi.";
+    }
+  }
+
+  async function askAI() {
+    const question = $("aiQuestion").value.trim();
+    const output = $("aiAnswer");
+
+    if (!question) {
+      output.textContent = "Savolingizni yozing.";
+      return;
+    }
+
+    if (!tg?.initData) {
+      output.textContent = "TAQVO AI’ni Telegram Mini App ichida oching.";
+      return;
+    }
+
+    output.textContent = "Javob tayyorlanmoqda...";
+
+    try {
+      const result = await apiFetch("/api/ask", {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          init_data: tg.initData,
+          question
+        })
+      });
+
+      output.textContent = result.answer || "Javob olinmadi.";
+    } catch (error) {
+      output.textContent = error.message;
+    }
+  }
+
+  async function checkSubscription() {
+    const message = $("subscriptionMessage");
+
+    if (!tg?.initData) {
+      message.textContent = "Obunani tekshirish uchun Telegram Mini App ichida oching.";
+      return;
+    }
+
+    message.textContent = "Obuna tekshirilmoqda...";
+
+    try {
+      const result = await apiFetch("/api/subscription", {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify({ init_data: tg.initData })
+      });
+
+      if (result.subscribed) {
+        $("subscriptionGate").classList.add("hidden");
+        $("homeScreen").classList.remove("hidden");
+        message.textContent = "";
+      } else {
+        message.textContent = "Kanalga obuna bo‘lib, qayta tekshiring.";
+      }
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  }
+
+  function toggleLanguage() {
+    state.language = state.language === "uz" ? "cyrl" : "uz";
+
+    $("languageButton").textContent =
+      state.language === "uz" ? "Кирилл" : "Lotin";
+
+    alert(
+      "Til tanlovi o‘zgardi. To‘liq lotin-kirill tarjimasi hali qo‘shilmagan."
+    );
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("button");
+    if (!target) return;
+
+    if (target.dataset.open) showSection(target.dataset.open);
+    if (target.dataset.surah) loadSurah(Number(target.dataset.surah));
+    if (target.dataset.audioSurah) playAudio(Number(target.dataset.audioSurah));
+    if (target.dataset.zikr) changeZikr(target.dataset.zikr);
+    if (target.dataset.resetZikr) changeZikr(target.dataset.resetZikr, true);
+    if (target.dataset.answer !== undefined) {
+      answerQuestion(Number(target.dataset.answer));
+    }
+
+    if (target.id === "backButton") showHome();
+    if (target.id === "calculatePrayer") fetchPrayerTimes();
+    if (target.id === "askAIButton") askAI();
+    if (target.id === "checkSubscription") checkSubscription();
+    if (target.id === "restartQuiz") startQuiz();
+  });
+
+  $("languageButton").addEventListener("click", toggleLanguage);
+
+  function init() {
+    renderMenu();
+    showHome();
+
+    if (tg?.initData) {
+      $("subscriptionGate").classList.remove("hidden");
+      $("homeScreen").classList.add("hidden");
+      checkSubscription();
+    }
+  }
+
+  init();
+})();
