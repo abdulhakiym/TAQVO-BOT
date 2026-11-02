@@ -1,302 +1,148 @@
-
+"""TAQVO BOT — /start -> kanalga obuna -> Mini App; qolgan hamma savolga AI javob beradi.
+Ishga tushirish: python main.py  (Render: Background Worker)
+Muhit o'zgaruvchilari: BOT_TOKEN, ANTHROPIC_API_KEY (majburiy);
+CHANNEL, WEBAPP_URL, AI_MODEL (ixtiyoriy).
+Botni kanalga ADMIN qilib qo'shing, aks holda obunani tekshirib bo'lmaydi.
+"""
+import asyncio
+import logging
 import os
-import json
-import hmac
-import hashlib
-import time
-import sqlite3
-import urllib.parse
+from collections import defaultdict, deque
 
 import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from aiogram import Bot, Dispatcher, F
+from aiogram.enums import ChatAction
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import CommandStart
+from aiogram.types import (CallbackQuery, InlineKeyboardButton,
+                           InlineKeyboardMarkup, Message, WebAppInfo)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-CHANNEL = os.getenv("TELEGRAM_CHANNEL", "@hakiymqalb")
-DATABASE_PATH = os.getenv("DATABASE_PATH", "taqvo.db")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("taqvo")
 
-app = FastAPI(title="TAQVO PRO MAX API")
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+AI_KEY = os.environ["ANTHROPIC_API_KEY"]
+CHANNEL = os.getenv("CHANNEL", "@hakiymqalb")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://abdulhakiym.github.io/TAQVO-BOT/")
+AI_MODEL = os.getenv("AI_MODEL", "claude-sonnet-5-5")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+SYSTEM = """Sen TAQVO AI — TAQVO BOT ning aqlli yordamchisisan.
+- Foydalanuvchi qaysi tilda yozsa, o'sha tilda javob ber (odatda o'zbek, lotin yozuvi).
+- Har qanday savolga mos, aniq va foydali javob ber; javob uzunligini savolga moslashtir (oddiy savolga qisqa).
+- Islomiy savollarda: Qur'on oyatlari va sahih hadislarni faqat aniq bilganingdagina keltir, manbani ayt.
+  Hech qachon oyat, hadis yoki manba to'qima. Ishonching komil bo'lmasa, buni ochiq ayt.
+- Ulamolar ixtilof qilgan masalada ixtilofni va mazhablar qarashlarini ko'rsat. Murakkab fatvo masalalarida
+  qat'iy fatvo berma, ishonchli olim yoki muftiylikka murojaat qilishni tavsiya qil.
+- Xushmuomala, hurmatli, sodda til. Markdown belgilarini (*, #) ishlatma, oddiy matn yoz."""
 
-
-def connect_db():
-    con = sqlite3.connect(DATABASE_PATH)
-    con.row_factory = sqlite3.Row
-    return con
-
-
-def init_db():
-    with connect_db() as con:
-        con.execute("""
-            CREATE TABLE IF NOT EXISTS scores (
-                telegram_id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                score INTEGER NOT NULL DEFAULT 0,
-                updated_at INTEGER NOT NULL
-            )
-        """)
+bot = Bot(BOT_TOKEN)
+dp = Dispatcher()
+history: dict[int, deque] = defaultdict(lambda: deque(maxlen=12))
+locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
-init_db()
-
-
-def validate_init_data(raw: str) -> dict:
-    if not BOT_TOKEN or not raw:
-        raise HTTPException(
-            status_code=401,
-            detail="Telegram ma’lumotlari yoki BOT_TOKEN sozlanmagan."
-        )
-
+async def is_subscribed(user_id: int):
+    """True / False; None — tekshirib bo'lmadi (masalan, bot kanalda admin emas)."""
     try:
-        values = dict(
-            urllib.parse.parse_qsl(raw, keep_blank_values=True)
-        )
-
-        received_hash = values.pop("hash", None)
-        auth_date = int(values.get("auth_date", "0"))
-
-        if not received_hash:
-            raise ValueError()
-
-        if time.time() - auth_date > 86400:
-            raise ValueError()
-
-        check_string = "\n".join(
-            f"{key}={value}"
-            for key, value in sorted(values.items())
-        )
-
-        secret = hmac.new(
-            b"WebAppData",
-            BOT_TOKEN.encode(),
-            hashlib.sha256
-        ).digest()
-
-        expected = hmac.new(
-            secret,
-            check_string.encode(),
-            hashlib.sha256
-        ).hexdigest()
-
-        if not hmac.compare_digest(expected, received_hash):
-            raise ValueError()
-
-        user = json.loads(values["user"])
-
-        if not user.get("id"):
-            raise ValueError()
-
-        return user
-
-    except Exception:
-        raise HTTPException(
-            status_code=401,
-            detail="Telegram tekshiruvi muvaffaqiyatsiz."
-        )
+        m = await bot.get_chat_member(CHANNEL, user_id)
+        return m.status in ("member", "administrator", "creator") or (
+            m.status == "restricted" and getattr(m, "is_member", False))
+    except TelegramAPIError as e:
+        log.error("getChatMember xatosi: %s", e)
+        return None
 
 
-async def is_subscribed(user_id: int) -> bool:
-    if not BOT_TOKEN:
-        raise HTTPException(
-            status_code=503,
-            detail="Render’da BOT_TOKEN sozlanmagan."
-        )
+def subscribe_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Kanalga obuna bo‘lish", url=f"https://t.me/{CHANNEL.lstrip('@')}")],
+        [InlineKeyboardButton(text="Obunani tekshirish", callback_data="check")],
+    ])
 
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
 
+def app_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="TAQVO PRO MAX ni ochish", web_app=WebAppInfo(url=WEBAPP_URL))],
+    ])
+
+
+SUBSCRIBE_TEXT = ("Botdan foydalanish uchun avval kanalimizga obuna bo‘ling, "
+                  "so‘ng “Obunani tekshirish” tugmasini bosing.")
+APP_TEXT = "Obuna tasdiqlandi. Ilovani ochish uchun tugmani bosing. Savolingiz bo‘lsa, shu yerga yozing."
+CANT_CHECK = "Hozir obunani tekshirib bo‘lmadi. Birozdan so‘ng qayta urinib ko‘ring."
+
+
+@dp.message(CommandStart())
+async def start(m: Message):
+    name = m.from_user.first_name or "aziz do‘st"
+    await m.answer(f"Assalamu alaykum va rohmatulloh, {name}!")
+    sub = await is_subscribed(m.from_user.id)
+    if sub is None:
+        await m.answer(CANT_CHECK)
+    elif sub:
+        await m.answer(APP_TEXT, reply_markup=app_kb())
+    else:
+        await m.answer(SUBSCRIBE_TEXT, reply_markup=subscribe_kb())
+
+
+@dp.callback_query(F.data == "check")
+async def check(c: CallbackQuery):
+    sub = await is_subscribed(c.from_user.id)
+    if sub is None:
+        await c.answer(CANT_CHECK, show_alert=True)
+    elif sub:
+        await c.answer()
+        await c.message.edit_text(APP_TEXT, reply_markup=app_kb())
+    else:
+        await c.answer("Hali obuna bo‘lmagansiz. Avval kanalga obuna bo‘ling.", show_alert=True)
+
+
+async def ask_ai(uid: int, text: str) -> str:
+    h = history[uid]
+    h.append({"role": "user", "content": text})
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            response = await client.get(
-                url,
-                params={
-                    "chat_id": CHANNEL,
-                    "user_id": user_id
-                }
+        async with httpx.AsyncClient(timeout=60) as cl:
+            r = await cl.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": AI_KEY, "anthropic-version": "2023-06-01"},
+                json={"model": AI_MODEL, "max_tokens": 1200, "system": SYSTEM, "messages": list(h)},
             )
-
-        data = response.json()
-
-    except httpx.HTTPError:
-        raise HTTPException(
-            status_code=502,
-            detail="Telegram serveriga ulanib bo‘lmadi."
-        )
-
-    if response.status_code != 200 or not data.get("ok"):
-        return False
-
-    status = data.get("result", {}).get("status")
-
-    return status in {
-        "creator",
-        "administrator",
-        "member",
-        "restricted"
-    }
+            r.raise_for_status()
+            answer = "".join(b.get("text", "") for b in r.json()["content"]).strip()
+        if not answer:
+            raise ValueError("bo'sh javob")
+        h.append({"role": "assistant", "content": answer})
+        return answer
+    except Exception as e:
+        log.error("AI xatosi: %s", e)
+        h.pop()  # muvaffaqiyatsiz savolni tarixdan olib tashlaymiz
+        return "Kechirasiz, hozir javob bera olmadim. Birozdan so‘ng qayta yozing."
 
 
-class InitDataInput(BaseModel):
-    init_data: str = ""
+@dp.message(F.text & ~F.text.startswith("/"))
+async def chat(m: Message):
+    sub = await is_subscribed(m.from_user.id)
+    if sub is None:
+        return await m.answer(CANT_CHECK)
+    if not sub:
+        return await m.answer(SUBSCRIBE_TEXT, reply_markup=subscribe_kb())
+    async with locks[m.from_user.id]:
+        await bot.send_chat_action(m.chat.id, ChatAction.TYPING)
+        answer = await ask_ai(m.from_user.id, m.text)
+    for i in range(0, len(answer), 4000):  # Telegram: 4096 belgi chegarasi
+        await m.answer(answer[i:i + 4000])
 
 
-class ScoreInput(BaseModel):
-    init_data: str = ""
-    name: str = "Foydalanuvchi"
-    score: int = Field(ge=0, le=100000)
+@dp.message()
+async def other(m: Message):
+    await m.answer("Savolingizni matn ko‘rinishida yozing, javob beraman.")
 
 
-class AskInput(BaseModel):
-    init_data: str = ""
-    question: str = Field(min_length=1, max_length=4000)
+async def main():
+    await bot.delete_webhook(drop_pending_updates=True)
+    await bot.delete_my_commands()  # ortiqcha menyu yo'q
+    log.info("TAQVO BOT ishga tushdi")
+    await dp.start_polling(bot)
 
 
-@app.get("/")
-def home():
-    return {
-        "ok": True,
-        "service": "TAQVO PRO MAX API"
-    }
-
-
-@app.get("/health")
-def health():
-    return {"ok": True}
-
-
-@app.post("/api/subscription")
-async def subscription(payload: InitDataInput):
-    user = validate_init_data(payload.init_data)
-    subscribed = await is_subscribed(int(user["id"]))
-
-    return {"subscribed": subscribed}
-
-
-@app.post("/api/score")
-async def save_score(payload: ScoreInput):
-    user = validate_init_data(payload.init_data)
-    user_id = int(user["id"])
-
-    if not await is_subscribed(user_id):
-        raise HTTPException(
-            status_code=403,
-            detail="@hakiymqalb kanaliga obuna bo‘ling."
-        )
-
-    name = (
-        user.get("first_name")
-        or payload.name
-        or "Foydalanuvchi"
-    )[:64]
-
-    with connect_db() as con:
-        con.execute("""
-            INSERT INTO scores
-                (telegram_id, name, score, updated_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(telegram_id) DO UPDATE SET
-                name = excluded.name,
-                score = MAX(scores.score, excluded.score),
-                updated_at = excluded.updated_at
-        """, (
-            str(user_id),
-            name,
-            payload.score,
-            int(time.time())
-        ))
-
-    return {"ok": True}
-
-
-@app.get("/api/ranking")
-def ranking():
-    with connect_db() as con:
-        rows = con.execute("""
-            SELECT name, score
-            FROM scores
-            ORDER BY score DESC, updated_at ASC
-            LIMIT 100
-        """).fetchall()
-
-    return {"items": [dict(row) for row in rows]}
-
-
-@app.post("/api/ask")
-async def ask_ai(payload: AskInput):
-    user = validate_init_data(payload.init_data)
-
-    if not await is_subscribed(int(user["id"])):
-        raise HTTPException(
-            status_code=403,
-            detail="@hakiymqalb kanaliga obuna bo‘ling."
-        )
-
-    if not OPENAI_API_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail="OPENAI_API_KEY sozlanmagan."
-        )
-
-    body = {
-        "model": OPENAI_MODEL,
-        "temperature": 0.2,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "Siz TAQVO AI, Islomiy savollarga ehtiyotkor "
-                    "javob beruvchi yordamchisiz. Qur’on va hadis "
-                    "manbalarini to‘qib chiqarmang. Manbani "
-                    "bilmasangiz, buni ochiq ayting. Fiqhiy "
-                    "masalalarda mazhablar farqini hisobga oling. "
-                    "O‘zingizni mufti deb tanishtirmang. "
-                    "O‘zbek tilida javob bering."
-                )
-            },
-            {
-                "role": "user",
-                "content": payload.question.strip()
-            }
-        ]
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=45) as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json=body
-            )
-
-        if response.status_code >= 400:
-            raise HTTPException(
-                status_code=502,
-                detail="AI xizmatida xatolik. Kalit va limitni tekshiring."
-            )
-
-        data = response.json()
-        answer = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
-
-        return {"answer": answer or "Javob olinmadi."}
-
-    except httpx.HTTPError:
-        raise HTTPException(
-            status_code=502,
-            detail="AI xizmatiga ulanib bo‘lmadi."
-        )
+if __name__ == "__main__":
+    asyncio.run(main())
