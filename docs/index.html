@@ -2,82 +2,77 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#08090D">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050507">
 <title>TAQVO PRO MAX</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <div id="app">
 
-  <!-- BOSH SAHIFA -->
-  <main id="home" class="view active">
+  <section id="home" class="page active">
     <header class="top">
-      <div class="brand">
-        <div class="logo">☪</div>
-        <div>
-          <div class="brand-name">TAQVO <span>PRO MAX</span></div>
-          <div class="greeting" id="greeting">Assalomu alaykum</div>
-        </div>
+      <div>
+        <p class="hello" id="hello">Assalomu alaykum</p>
+        <h1 class="brand">TAQVO <span>PRO MAX</span></h1>
       </div>
-      <div class="dates">
-        <div id="dateG">—</div>
-        <div id="dateH" class="muted">—</div>
-      </div>
+      <button class="city-btn" id="cityBtn" aria-label="Shaharni tanlash">
+        <span id="cityName">Toshkent</span>
+      </button>
     </header>
 
-    <section class="prayer-card glass" id="prayerCard">
-      <div class="pc-head">
-        <button class="city-btn" id="cityBtn">📍 <span id="cityName">Toshkent</span> ▾</button>
-        <div class="muted small" id="methodName"></div>
-      </div>
-      <div class="next" id="nextBox">
-        <div class="muted small">Keyingi namoz</div>
-        <div class="next-name" id="nextName">—</div>
-        <div class="countdown" id="countdown">--:--:--</div>
-      </div>
-      <div class="times" id="timesGrid"></div>
-      <div class="state" id="prayerState"></div>
-    </section>
-
-    <section class="grid" id="sectionGrid"></section>
-    <footer class="foot muted small">TAQVO PRO MAX · <a href="https://t.me/hakiymqalb">@hakiymqalb</a></footer>
-  </main>
-
-  <!-- ICHKI SAHIFA -->
-  <section id="page" class="view">
-    <div class="page-bar">
-      <button id="backBtn" class="back">‹</button>
-      <h2 id="pageTitle"></h2>
+    <div class="hero" id="hero">
+      <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width=".6">
+          <rect x="20" y="20" width="60" height="60"/>
+          <rect x="20" y="20" width="60" height="60" transform="rotate(45 50 50)"/>
+          <circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="14"/>
+        </g>
+      </svg>
+      <p class="hero-label">Keyingi namoz</p>
+      <p class="hero-prayer" id="nextName">…</p>
+      <p class="hero-time" id="countdown">--:--:--</p>
+      <p class="hero-at" id="nextAt"></p>
     </div>
-    <div id="pageBody" class="page-body"></div>
+
+    <div class="prayers" id="prayers" aria-live="polite"></div>
+    <p class="note" id="prayerNote"></p>
+
+    <div class="zikr-row">
+      <button class="zikr" data-open="morning">Tonggi zikr</button>
+      <button class="zikr" data-open="evening">Kechki zikr</button>
+    </div>
+
+    <h2 class="h2">Bo‘limlar</h2>
+    <div class="grid" id="grid"></div>
+
+    <p class="foot">@hakiymqalb</p>
   </section>
 
-  <!-- SHAHAR TANLASH -->
-  <div id="citySheet" class="sheet">
-    <div class="sheet-box glass">
-      <h3>Shaharni tanlang</h3>
-      <input id="cityFilter" type="search" placeholder="Qidirish…" autocomplete="off">
-      <div id="cityList" class="city-list"></div>
-      <button id="gpsBtn" class="btn ghost">🎯 Joylashuvim bo'yicha (GPS)</button>
-      <button id="cityClose" class="btn">Yopish</button>
-    </div>
-  </div>
+  <section id="view" class="page">
+    <button class="back" id="backBtn">Orqaga</button>
+    <h2 class="view-title" id="viewTitle"></h2>
+    <div class="status" id="viewStatus"></div>
+    <div id="viewBody"></div>
+  </section>
 
-  <div id="toast" class="toast"></div>
 </div>
 
-  <script src="js/api.js"></script>
-<script src="js/prayer.js"></script>
-<script src="js/quran.js"></script>
-<script src="js/tasbeeh.js"></script>
-<script src="js/adhkar.js"></script>
-<script src="js/quiz.js"></script>
-<script src="js/names.js"></script>
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <h3>Shaharni tanlang</h3>
+      <button class="x" id="sheetClose" aria-label="Yopish">✕</button>
+    </div>
+    <input type="search" id="citySearch" placeholder="Shahar qidirish" autocomplete="off">
+    <ul id="cityList"></ul>
+  </div>
+</div>
+
 <script src="js/app.js"></script>
 </body>
 </html>
