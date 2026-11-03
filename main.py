@@ -19,7 +19,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, WebAppInfo)
 
-from content import (AKHIRAH, COUNTRIES, PRAYER_NAMES, ZIKR_EVENING, ZIKR_MORNING)
+from content import AKHIRAH, COUNTRIES, PRAYER_NAMES, REMIND
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("taqvo")
@@ -68,9 +68,10 @@ def subscribe_kb():
         [InlineKeyboardButton(text="Obunani tekshirish", callback_data="check")]])
 
 
-def app_kb():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="TAQVO PRO MAX ni ochish", web_app=WebAppInfo(url=WEBAPP_URL))]])
+def app_kb(section=None, label="TAQVO PRO MAX ni ochish"):
+    """Mini App tugmasi. section berilsa, ilova to'g'ridan-to'g'ri shu bo'limda ochiladi (?s=morning)."""
+    url = WEBAPP_URL + (f"?s={section}" if section else "")
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=label, web_app=WebAppInfo(url=url))]])
 
 
 def countries_kb():
@@ -235,44 +236,63 @@ async def ayah_text(ref: str) -> str:
     if ref not in AYAH_CACHE:
         r = await http.get(f"https://api.alquran.cloud/v1/ayah/{ref}/editions/quran-uthmani,uz.sodik")
         r.raise_for_status()
-        ar, uz = r.json()["data"][0]["text"], r.json()["data"][1]["text"]
-        AYAH_CACHE[ref] = f"{ar}\n\n{uz}\n\nQur’on, {ref}"
+        d = r.json()["data"]
+        AYAH_CACHE[ref] = f"{d[0]['text']}\n\n{d[1]['text']}\n\nQur’on, {ref}"
     return AYAH_CACHE[ref]
 
 
 def pick(items: list, day, slot: int = 0):
-    return items[(day.toordinal() * 2 + slot) % len(items)]
+    """Har kuni boshqa element; slot=1 ro'yxatning yarmiga siljigan, shu sabab bir kunda ikkalasi har xil."""
+    n = len(items)
+    return items[(day.toordinal() + slot * (n // 2)) % n]
+
+
+async def item_body(item):
+    """Element matni; oyat olinmasa None (shunda hadis/so'zga o'tiladi)."""
+    if item["t"] == "q":
+        try:
+            return await ayah_text(item["ref"])
+        except Exception as e:
+            log.error("Oyat olinmadi (%s): %s", item["ref"], e)
+            return None
+    if item["t"] == "w":
+        return item["text"]
+    return f"{item['text']}\n\nManba: {item['src']}"
+
+
+def fallback(items: list, day):
+    return next(i for i in items[day.toordinal() % len(items):] + items if i["t"] != "q")
 
 
 async def akhirah_message(day, slot: int) -> str:
     item = pick(AKHIRAH, day, slot)
-    body = None
-    if item["t"] == "q":
-        try:
-            body = await ayah_text(item["ref"])
-        except Exception as e:
-            log.error("Oyat olinmadi (%s): %s", item["ref"], e)
-            item = next(i for i in AKHIRAH[day.toordinal() % len(AKHIRAH):] + AKHIRAH if i["t"] == "h")
+    body = await item_body(item)
     if body is None:
-        body = f"{item['text']}\n\nManba: {item['src']}"
-    return f"Oxirat eslatmasi\n\n{body}"
+        item = fallback(AKHIRAH, day)
+        body = await item_body(item)
+    head = "Yurakka so‘z" if item["t"] == "w" else "Oxirat eslatmasi"
+    return f"{head}\n\n{body}"
 
 
-def zikr_message(items: list, day, title: str) -> str:
-    z = pick(items, day)
-    ar = f"\n\n{z['ar']}" if z["ar"] else ""
-    return f"{title}\n\n{z['text']}{ar}\n\nManba: {z['src']}"
+async def zikr_reminder(day, slot: int, title: str) -> str:
+    item = pick(REMIND, day, slot)
+    body = await item_body(item)
+    if body is None:
+        body = await item_body(fallback(REMIND, day))
+    return f"{title}\n\n{body}\n\nZikrlar to‘plamini TAQVO PRO MAX da o‘qing va sunnatni tiriltiring."
 
 
-async def build_message(kind: str, u, t: dict, day) -> str:
+async def build_message(kind: str, u, t: dict, day):
+    """(matn, tugma) qaytaradi. Namoz va zikr eslatmalarida har doim Mini App tugmasi bor."""
     if kind.startswith("p_"):
         k = kind[2:]
-        return f"{PRAYER_NAMES[k]} namozi vaqti kirdi ({u['city_uz']}, {t[k]}). Alloh qabul qilsin."
+        return (f"{PRAYER_NAMES[k]} namozi vaqti kirdi ({u['city_uz']}, {t[k]}). Alloh qabul qilsin.\n\n"
+                f"Namoz vaqtlari, zikr va Qur’on ilovada.", app_kb())
     if kind == "zikr_m":
-        return zikr_message(ZIKR_MORNING, day, "Tonggi zikr vaqti. Bomdoddan keyin zikrni unutmang.")
+        return await zikr_reminder(day, 0, "Tonggi zikr vaqti"), app_kb("morning", "Tonggi zikrni ochish")
     if kind == "zikr_e":
-        return zikr_message(ZIKR_EVENING, day, "Kechki zikr vaqti. Shomdan keyin zikrni unutmang.")
-    return await akhirah_message(day, 0 if kind == "ah_1" else 1)
+        return await zikr_reminder(day, 1, "Kechki zikr vaqti"), app_kb("evening", "Kechki zikrni ochish")
+    return await akhirah_message(day, 0 if kind == "ah_1" else 1), None
 
 # ---------------------------------------------------------------- rejalashtiruvchi
 async def tick():
@@ -304,7 +324,8 @@ async def tick():
             if not claimed:
                 continue  # allaqachon yuborilgan: takror yuborilmaydi
             try:
-                await bot.send_message(u["id"], await build_message(kind, u, t, day))
+                text, kb = await build_message(kind, u, t, day)
+                await bot.send_message(u["id"], text, reply_markup=kb)
             except TelegramForbiddenError:
                 await pool.execute("UPDATE users SET enabled=FALSE WHERE id=$1", u["id"])
             except Exception as e:
