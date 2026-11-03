@@ -76,3 +76,22 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
   @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 }
 @media (max-width:360px){.hero-time{font-size:38px}.p span{font-size:12.5px}}
+
+#cityList li.grp{position:sticky;top:0;padding:8px 6px;background:#0d0d12;color:var(--amber);font-size:12px;font-weight:700}
+
+.zbanner{padding:16px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(160deg,rgba(255,215,0,.10),var(--glass));margin-bottom:12px}
+.zbanner b{font-family:Amiri,serif;font-size:20px;color:var(--gold)}
+.zbanner p{margin:6px 0;color:var(--muted);font-size:13px}
+.zbar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px}
+.zbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--amber));transition:width .3s}
+.zprog{font-size:12px!important;margin-bottom:0!important}
+.zcard{padding:16px;border:1px solid var(--line);border-radius:20px;background:var(--glass);margin-bottom:10px}
+.zcard.done{border-color:var(--gold);background:rgba(255,215,0,.07)}
+.zcard h3{font-size:15px;color:var(--amber);margin-bottom:8px}
+.zar{font-family:Amiri,serif;font-size:24px;line-height:2;text-align:right;color:var(--text)}
+.zuz{color:var(--muted);font-size:13.5px;margin-top:6px}
+.zsrc{color:var(--muted);font-size:11.5px;margin-top:8px;opacity:.85}
+.zcnt{width:100%;margin-top:12px;padding:13px;border-radius:14px;font-weight:700;color:#1a1200;background:linear-gradient(135deg,var(--gold),var(--amber))}
+.zcard.done .zcnt{background:rgba(255,215,0,.15);color:var(--gold)}
+.zcnt:active{transform:scale(.98)}
+.zreset{display:block;margin:14px auto 4px;padding:9px 16px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
