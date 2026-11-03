@@ -140,6 +140,12 @@
 
   function open(id) {
     if (id === 'prayer') { goHome(); return; } // namoz vaqtlari bosh sahifada ishlaydi
+    if (id === 'morning' || id === 'evening') {
+      const r = window.TaqvoZikr.render(id, $('viewBody'));
+      $('viewTitle').textContent = r.title; $('viewStatus').textContent = r.status;
+      show(view); if (tg) tg.BackButton.show();
+      return;
+    }
     const s = SECTIONS.find(x => x[0] === id); if (!s) return;
     $('viewTitle').textContent = s[2];
     $('viewStatus').textContent = 'Hali ulanmagan';
@@ -154,6 +160,10 @@
   });
   $('backBtn').onclick = goHome;
   if (tg) tg.BackButton.onClick(goHome);
+
+  // Bot tugmasidan to'g'ridan-to'g'ri bo'limga kirish: ?s=morning yoki ?s=evening
+  const deep = new URLSearchParams(location.search).get('s');
+  if (deep && SECTIONS.some((s) => s[0] === deep)) open(deep);
 
   loadPrayers();
 })();
