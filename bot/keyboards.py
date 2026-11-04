@@ -1,5 +1,8 @@
+"""
+TAQVO PRO MAX — Telegram bot klaviaturalari.
+Aiogram 3.x
+"""
 
-"""TAQVO PRO MAX — Telegram bot klaviaturalari."""
 from __future__ import annotations
 
 from aiogram.types import (
@@ -11,10 +14,38 @@ from aiogram.types import (
 )
 
 
+PRAYER_METHODS = [
+    (0, "Shia Ithna-Ashari"),
+    (1, "Karachi"),
+    (2, "ISNA"),
+    (3, "Muslim World League"),
+    (4, "Umm Al-Qura, Makkah"),
+    (5, "Egypt"),
+    (7, "Tehran"),
+    (8, "Gulf Region"),
+    (9, "Kuwait"),
+    (10, "Qatar"),
+    (11, "Singapore"),
+    (12, "France"),
+    (13, "Turkey"),
+    (14, "Russia"),
+    (15, "Moonsighting Committee"),
+    (16, "Dubai"),
+    (17, "Malaysia"),
+    (18, "Tunisia"),
+    (19, "Algeria"),
+    (20, "Indonesia"),
+    (21, "Morocco"),
+    (22, "Portugal"),
+    (23, "Jordan"),
+]
+
+
 def subscription_keyboard(
     channel_url: str,
 ) -> InlineKeyboardMarkup:
     """Majburiy kanal obunasi tugmalari."""
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -34,7 +65,8 @@ def subscription_keyboard(
 
 
 def main_keyboard() -> ReplyKeyboardMarkup:
-    """Botdagi doimiy pastki menyu."""
+    """Botning doimiy pastki menyusi."""
+
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -52,7 +84,8 @@ def main_keyboard() -> ReplyKeyboardMarkup:
 def mini_app_keyboard(
     mini_app_url: str,
 ) -> InlineKeyboardMarkup:
-    """TAQVO PRO MAX Mini App ochish tugmasi."""
+    """TAQVO PRO MAX Mini App tugmasi."""
+
     if not mini_app_url.startswith("https://"):
         raise ValueError(
             "Mini App manzili HTTPS bilan boshlanishi kerak."
@@ -72,6 +105,7 @@ def mini_app_keyboard(
 
 def location_keyboard() -> ReplyKeyboardMarkup:
     """GPS orqali joylashuv yuborish."""
+
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -79,25 +113,23 @@ def location_keyboard() -> ReplyKeyboardMarkup:
                     text="📍 Joylashuvimni yuborish",
                     request_location=True,
                 )
-            ],
-            [
-                KeyboardButton(
-                    text="✍️ Shaharni qo‘lda kiritish",
-                )
-            ],
+            ]
         ],
         resize_keyboard=True,
         one_time_keyboard=True,
-        input_field_placeholder="Joylashuvingizni tanlang",
+        input_field_placeholder="GPS yuboring yoki shahar nomini yozing",
     )
 
 
 def cancel_keyboard() -> ReplyKeyboardMarkup:
-    """Kiritish jarayonini bekor qilish."""
+    """Jarayonni bekor qilish tugmasi."""
+
     return ReplyKeyboardMarkup(
         keyboard=[
             [
-                KeyboardButton(text="❌ Bekor qilish"),
+                KeyboardButton(
+                    text="❌ Bekor qilish",
+                )
             ]
         ],
         resize_keyboard=True,
@@ -106,7 +138,8 @@ def cancel_keyboard() -> ReplyKeyboardMarkup:
 
 
 def settings_keyboard() -> InlineKeyboardMarkup:
-    """Foydalanuvchi sozlamalari menyusi."""
+    """Foydalanuvchi sozlamalari."""
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -117,7 +150,7 @@ def settings_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="🕰 Hisoblash usuli",
+                    text="🕌 Namoz hisoblash usuli",
                     callback_data="settings:prayer_method",
                 )
             ],
@@ -132,69 +165,67 @@ def settings_keyboard() -> InlineKeyboardMarkup:
 
 
 def prayer_method_keyboard() -> InlineKeyboardMarkup:
-    """Namoz vaqtlarini hisoblash usullari."""
-    methods = [
-        (0, "Shia Ithna-Ashari"),
-        (1, "University of Islamic Sciences, Karachi"),
-        (2, "Islamic Society of North America"),
-        (3, "Muslim World League"),
-        (4, "Umm Al-Qura University, Makkah"),
-        (5, "Egyptian General Authority"),
-        (7, "Institute of Geophysics, Tehran"),
-        (8, "Gulf Region"),
-        (9, "Kuwait"),
-        (10, "Qatar"),
-        (11, "Singapore"),
-        (12, "France"),
-        (13, "Turkey"),
-        (14, "Russia"),
-        (15, "Moonsighting Committee"),
-        (16, "Dubai"),
-        (17, "JAKIM Malaysia"),
-        (18, "Tunisia"),
-        (19, "Algeria"),
-        (20, "Indonesia"),
-        (21, "Morocco"),
-        (22, "Portugal"),
-        (23, "Jordan"),
-    ]
+    """Namoz hisoblash usulini tanlash."""
 
-    rows = [
+    rows = []
+
+    for method_id, method_name in PRAYER_METHODS:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=method_name,
+                    callback_data=f"settings:method:{method_id}",
+                )
+            ]
+        )
+
+    rows.append(
         [
             InlineKeyboardButton(
-                text=name,
-                callback_data=f"prayer_method:{method_id}",
+                text="⬅️ Orqaga",
+                callback_data="settings:back",
             )
         ]
-        for method_id, name in methods
-    ]
-
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-def reminder_keyboard(enabled: bool) -> InlineKeyboardMarkup:
-    """Eslatmalarni yoqish yoki o‘chirish."""
-    action = "reminders:disable" if enabled else "reminders:enable"
-    label = (
-        "🔕 Eslatmalarni o‘chirish"
-        if enabled
-        else "🔔 Eslatmalarni yoqish"
     )
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=rows
+    )
+
+
+def reminder_keyboard(
+    enabled: bool,
+) -> InlineKeyboardMarkup:
+    """Eslatmalarni yoqish yoki o‘chirish."""
+
+    if enabled:
+        label = "🔕 Eslatmalarni o‘chirish"
+        callback = "settings:reminders:off"
+    else:
+        label = "🔔 Eslatmalarni yoqish"
+        callback = "settings:reminders:on"
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text=label,
-                    callback_data=action,
+                    callback_data=callback,
                 )
-            ]
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Orqaga",
+                    callback_data="settings:back",
+                )
+            ],
         ]
     )
 
 
 def tasbeh_keyboard() -> InlineKeyboardMarkup:
-    """Tasbeh hisoblagichi tugmalari."""
+    """Tasbeh hisoblagichi."""
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -216,17 +247,22 @@ def quiz_answer_keyboard(
     answers: list[str],
 ) -> InlineKeyboardMarkup:
     """Siyrat viktorinasi javoblari."""
-    if not question_id or len(question_id) > 64:
+
+    if not question_id or len(question_id) > 40:
         raise ValueError("Savol ID noto‘g‘ri.")
 
     if not 2 <= len(answers) <= 6:
-        raise ValueError("Javoblar soni 2 dan 6 gacha bo‘lishi kerak.")
+        raise ValueError(
+            "Javoblar soni 2 dan 6 gacha bo‘lishi kerak."
+        )
 
     rows = []
 
     for index, answer in enumerate(answers):
         if not answer.strip():
-            raise ValueError("Javob bo‘sh bo‘lmasligi kerak.")
+            raise ValueError(
+                "Javob bo‘sh bo‘lmasligi kerak."
+            )
 
         rows.append(
             [
@@ -237,4 +273,6 @@ def quiz_answer_keyboard(
             ]
         )
 
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+    return InlineKeyboardMarkup(
+        inline_keyboard=rows
+    )
