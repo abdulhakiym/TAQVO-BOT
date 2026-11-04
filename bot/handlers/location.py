@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -28,10 +27,8 @@ GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 TIMEZONE_URL = "https://api.open-meteo.com/v1/forecast"
 
-# Foydalanuvchilarning qidiruv natijalari vaqtincha saqlanadi.
 CITY_RESULTS: dict[int, list[dict[str, Any]]] = {}
 
-# Bu matnlar shahar qidiruvi sifatida qabul qilinmaydi.
 RESERVED_TEXTS = {
     "🕌 Namoz vaqtlarim",
     "❌ Bekor qilish",
@@ -48,8 +45,6 @@ async def search_cities(
     session: aiohttp.ClientSession,
     query: str,
 ) -> list[dict[str, Any]]:
-    """Open-Meteo orqali dunyo shaharlarini qidiradi."""
-
     params = {
         "name": query,
         "count": 8,
@@ -127,8 +122,6 @@ async def get_timezone_by_coordinates(
     latitude: float,
     longitude: float,
 ) -> str | None:
-    """GPS koordinatalari bo‘yicha vaqt zonasini aniqlaydi."""
-
     params = {
         "latitude": latitude,
         "longitude": longitude,
@@ -163,8 +156,6 @@ async def reverse_geocode(
     latitude: float,
     longitude: float,
 ) -> dict[str, str] | None:
-    """Nominatim orqali GPS koordinatalaridan shahar va davlatni topadi."""
-
     params = {
         "format": "jsonv2",
         "lat": latitude,
@@ -233,8 +224,6 @@ async def reverse_geocode(
 
 
 async def send_mini_app_button(message: Message) -> None:
-    """Mini App tugmasini alohida xabar qilib yuboradi."""
-
     if not settings.mini_app_url:
         return
 
@@ -250,8 +239,6 @@ async def save_city(
     user_id: int,
     city: dict[str, Any],
 ) -> None:
-    """Tanlangan shaharni bazaga saqlaydi."""
-
     set_location(
         user_id=user_id,
         city=city["name"],
@@ -259,15 +246,12 @@ async def save_city(
         timezone_name=city["timezone"],
     )
 
-    safe_city = escape(str(city["name"]))
-    safe_country = escape(str(city["country"]))
-    safe_timezone = escape(str(city["timezone"]))
-
     await message.answer(
         "✅ <b>Joylashuvingiz saqlandi!</b>\n\n"
-        f"📍 Shahar: <b>{safe_city}</b>\n"
-        f"🌍 Davlat: <b>{safe_country}</b>\n"
-        f"🕒 Vaqt zonasi: <code>{safe_timezone}</code>\n\n"
+        f"📍 Shahar: <b>{escape(str(city['name']))}</b>\n"
+        f"🌍 Davlat: <b>{escape(str(city['country']))}</b>\n"
+        f"🕒 Vaqt zonasi: "
+        f"<code>{escape(str(city['timezone']))}</code>\n\n"
         "Endi namoz vaqtlaringiz shu joylashuv bo‘yicha hisoblanadi.",
         reply_markup=main_keyboard(),
     )
@@ -280,8 +264,6 @@ async def gps_location_handler(
     message: Message,
     http_session: aiohttp.ClientSession,
 ) -> None:
-    """GPS koordinatalaridan shahar va vaqt zonasini aniqlaydi."""
-
     user = message.from_user
     location = message.location
 
@@ -310,7 +292,7 @@ async def gps_location_handler(
         logger.exception("GPS joylashuvini saqlashda xatolik.")
         await message.answer(
             "Joylashuvni saqlashda xatolik yuz berdi. "
-            "Iltimos, qayta urinib ko‘ring."
+            "Qayta urinib ko‘ring."
         )
 
 
@@ -319,30 +301,25 @@ async def city_command_handler(message: Message) -> None:
     await message.answer(
         "🌍 <b>Shaharni qidirish</b>\n\n"
         "Shahar nomini yuboring.\n\n"
-        "Masalan:\n"
-        "• Karaganda\n"
-        "• Tashkent\n"
-        "• London\n"
-        "• Istanbul\n"
-        "• Makkah"
+        "Masalan: Karaganda, Tashkent, London, Istanbul, Makkah."
     )
 
 
-@router.message(F.text)
+# MUHIM: bu filtr buyruqlar va menyu tugmalarini
+# shahar qidiruv handleriga tushishidan oldin chiqarib tashlaydi.
+@router.message(
+    F.text
+    & ~F.text.startswith("/")
+    & ~F.text.in_(RESERVED_TEXTS)
+)
 async def city_search_handler(
     message: Message,
     http_session: aiohttp.ClientSession,
 ) -> None:
-    """Yozilgan shahar nomini dunyo bo‘yicha qidiradi."""
-
     user = message.from_user
     query = (message.text or "").strip()
 
     if user is None or not query:
-        return
-
-    # Buyruqlar va asosiy menyu tugmalarini o'tkazib yuboramiz.
-    if query.startswith("/") or query in RESERVED_TEXTS:
         return
 
     if len(query) < 2:
@@ -376,8 +353,6 @@ async def city_search_handler(
 async def city_select_handler(
     callback: CallbackQuery,
 ) -> None:
-    """Qidiruv natijasidan tanlangan shaharni bazaga saqlaydi."""
-
     user_id = callback.from_user.id
     cities = CITY_RESULTS.get(user_id, [])
 
