@@ -146,6 +146,13 @@
       show(view); if (tg) tg.BackButton.show();
       return;
     }
+    const mod = window.TaqvoSections && window.TaqvoSections[id];
+    if (mod) {
+      const r = mod($('viewBody'));
+      $('viewTitle').textContent = r.title; $('viewStatus').textContent = r.status;
+      show(view); if (tg) tg.BackButton.show();
+      return;
+    }
     const s = SECTIONS.find(x => x[0] === id); if (!s) return;
     $('viewTitle').textContent = s[2];
     $('viewStatus').textContent = 'Hali ulanmagan';
