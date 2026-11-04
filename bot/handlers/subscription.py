@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -6,7 +5,7 @@ import logging
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, Message
 
-from database import set_subscription
+from database import get_user, set_subscription
 from keyboards import location_keyboard
 from services.subscription_service import check_subscription
 
@@ -21,14 +20,24 @@ async def subscription_check_handler(
     callback: CallbackQuery,
     bot: Bot,
 ) -> None:
-    """Kanal obunasini qayta tekshiradi."""
+    """Telegram kanaliga obunani qayta tekshiradi."""
 
-    user = callback.from_user
+    user_id = callback.from_user.id
+    answered = False
 
     try:
+        profile = get_user(user_id)
+
+        if not profile:
+            await callback.answer(
+                "Avval /start buyrug‘ini bosing.",
+                show_alert=True,
+            )
+            return
+
         is_subscribed = await check_subscription(
             bot=bot,
-            user_id=user.id,
+            user_id=user_id,
         )
 
         if not is_subscribed:
@@ -39,11 +48,10 @@ async def subscription_check_handler(
             )
             return
 
-        set_subscription(user.id, True)
+        set_subscription(user_id, True)
 
-        await callback.answer(
-            "✅ Obuna tasdiqlandi!"
-        )
+        await callback.answer("✅ Obuna tasdiqlandi!")
+        answered = True
 
         if isinstance(callback.message, Message):
             await callback.message.answer(
@@ -51,18 +59,25 @@ async def subscription_check_handler(
                 "🕌 <b>TAQVO PRO MAX</b> xizmatiga xush kelibsiz.\n\n"
                 "Endi namoz vaqtlarini hisoblash uchun "
                 "joylashuvingizni tanlang.\n\n"
-                "📍 Joylashuvingizni yuboring yoki "
-                "shaharni qo‘lda kiriting.",
+                "📍 GPS orqali joylashuvingizni yuboring "
+                "yoki shahar nomini yozing.",
                 reply_markup=location_keyboard(),
             )
 
     except Exception:
         logger.exception(
-            "Obuna callback xatoligi. User ID: %s",
-            user.id,
+            "Obuna tekshiruvida xatolik. User ID: %s",
+            user_id,
         )
 
-        await callback.answer(
-            "Texnik xatolik yuz berdi. Qayta urinib ko‘ring.",
-            show_alert=True,
-        )
+        if not answered:
+            await callback.answer(
+                "Texnik xatolik yuz berdi. Qayta urinib ko‘ring.",
+                show_alert=True,
+            )
+
+        elif isinstance(callback.message, Message):
+            await callback.message.answer(
+                "⚠️ Texnik xatolik yuz berdi. "
+                "Iltimos, /start buyrug‘ini qayta yuboring."
+            )
