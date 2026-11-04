@@ -1,9 +1,13 @@
 """
 TAQVO PRO MAX — Telegram bot klaviaturalari.
+Python 3.11+
 Aiogram 3.x
 """
 
 from __future__ import annotations
+
+import re
+from urllib.parse import urlparse
 
 from aiogram.types import (
     InlineKeyboardMarkup,
@@ -13,6 +17,10 @@ from aiogram.types import (
     WebAppInfo,
 )
 
+
+# =========================================================
+# NAMOZ HISOBLASH USULLARI
+# =========================================================
 
 PRAYER_METHODS = [
     (0, "Shia Ithna-Ashari"),
@@ -41,10 +49,41 @@ PRAYER_METHODS = [
 ]
 
 
+# =========================================================
+# UMUMIY YORDAMCHI FUNKSIYALAR
+# =========================================================
+
+def _validate_https_url(url: str) -> str:
+    """HTTPS URL manzilini tekshiradi."""
+
+    if not isinstance(url, str):
+        raise ValueError("URL matn ko‘rinishida bo‘lishi kerak.")
+
+    url = url.strip()
+    parsed = urlparse(url)
+
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or any(char.isspace() for char in url)
+    ):
+        raise ValueError(
+            "To‘g‘ri HTTPS manzilini kiriting."
+        )
+
+    return url
+
+
+# =========================================================
+# OBUNA KLAVIATURASI
+# =========================================================
+
 def subscription_keyboard(
     channel_url: str,
 ) -> InlineKeyboardMarkup:
     """Majburiy kanal obunasi tugmalari."""
+
+    channel_url = _validate_https_url(channel_url)
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -64,6 +103,10 @@ def subscription_keyboard(
     )
 
 
+# =========================================================
+# ASOSIY MENYU
+# =========================================================
+
 def main_keyboard() -> ReplyKeyboardMarkup:
     """Botning doimiy pastki menyusi."""
 
@@ -81,27 +124,34 @@ def main_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
+# =========================================================
+# MINI APP
+# =========================================================
+
 def mini_app_keyboard(
     mini_app_url: str,
 ) -> InlineKeyboardMarkup:
     """TAQVO PRO MAX Mini App tugmasi."""
 
-    if not mini_app_url.startswith("https://"):
-        raise ValueError(
-            "Mini App manzili HTTPS bilan boshlanishi kerak."
-        )
+    mini_app_url = _validate_https_url(mini_app_url)
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="🌿 TAQVO PRO MAX — ochish",
-                    web_app=WebAppInfo(url=mini_app_url),
+                    web_app=WebAppInfo(
+                        url=mini_app_url,
+                    ),
                 )
             ]
         ]
     )
 
+
+# =========================================================
+# JOYLASHUV
+# =========================================================
 
 def location_keyboard() -> ReplyKeyboardMarkup:
     """GPS orqali joylashuv yuborish."""
@@ -117,7 +167,9 @@ def location_keyboard() -> ReplyKeyboardMarkup:
         ],
         resize_keyboard=True,
         one_time_keyboard=True,
-        input_field_placeholder="GPS yuboring yoki shahar nomini yozing",
+        input_field_placeholder=(
+            "GPS yuboring yoki shahar nomini yozing"
+        ),
     )
 
 
@@ -136,6 +188,10 @@ def cancel_keyboard() -> ReplyKeyboardMarkup:
         one_time_keyboard=True,
     )
 
+
+# =========================================================
+# SOZLAMALAR
+# =========================================================
 
 def settings_keyboard() -> InlineKeyboardMarkup:
     """Foydalanuvchi sozlamalari."""
@@ -223,8 +279,12 @@ def reminder_keyboard(
     )
 
 
+# =========================================================
+# TASBEH
+# =========================================================
+
 def tasbeh_keyboard() -> InlineKeyboardMarkup:
-    """Tasbeh hisoblagichi."""
+    """Tasbeh hisoblagichi tugmalari."""
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -242,16 +302,26 @@ def tasbeh_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+# =========================================================
+# SIYRAT VIKTORINASI
+# =========================================================
+
 def quiz_answer_keyboard(
     question_id: str,
     answers: list[str],
 ) -> InlineKeyboardMarkup:
     """Siyrat viktorinasi javoblari."""
 
-    if not question_id or len(question_id) > 40:
-        raise ValueError("Savol ID noto‘g‘ri.")
+    if not isinstance(question_id, str):
+        raise ValueError("Savol ID matn bo‘lishi kerak.")
 
-    if not 2 <= len(answers) <= 6:
+    # Callback ma'lumotida faqat xavfsiz ASCII ID ishlatiladi.
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", question_id):
+        raise ValueError(
+            "Savol ID faqat harf, raqam, _ va - belgilaridan iborat bo‘lishi kerak."
+        )
+
+    if not isinstance(answers, list) or not 2 <= len(answers) <= 6:
         raise ValueError(
             "Javoblar soni 2 dan 6 gacha bo‘lishi kerak."
         )
@@ -259,15 +329,15 @@ def quiz_answer_keyboard(
     rows = []
 
     for index, answer in enumerate(answers):
-        if not answer.strip():
+        if not isinstance(answer, str) or not answer.strip():
             raise ValueError(
-                "Javob bo‘sh bo‘lmasligi kerak."
+                "Javob matni bo‘sh bo‘lmasligi kerak."
             )
 
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=answer[:64],
+                    text=answer.strip()[:64],
                     callback_data=f"quiz:{question_id}:{index}",
                 )
             ]
