@@ -1,13 +1,14 @@
 """
 TAQVO PRO MAX — SQLite ma'lumotlar bazasi.
 Python 3.11+
+Xavfsiz ulanish, migratsiya va ma'lumotlarni boshqarish.
 """
 
 from __future__ import annotations
 
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any, Iterator
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -16,11 +17,11 @@ from config import settings
 
 
 # =========================================================
-# VAQT VA BAZA
+# UMUMIY SOZLAMALAR
 # =========================================================
 
 def utc_now() -> str:
-    """Joriy UTC vaqtini qaytaradi."""
+    """Joriy UTC vaqtini ISO formatida qaytaradi."""
     return datetime.now(ZoneInfo("UTC")).isoformat(
         timespec="seconds"
     )
@@ -32,15 +33,15 @@ def local_today(timezone_name: str | None = None) -> str:
     selected_timezone = timezone_name or settings.timezone
 
     try:
-        tz = ZoneInfo(selected_timezone)
+        timezone = ZoneInfo(selected_timezone)
     except (ZoneInfoNotFoundError, ValueError):
-        tz = ZoneInfo(settings.timezone)
+        timezone = ZoneInfo(settings.timezone)
 
-    return datetime.now(tz).date().isoformat()
+    return datetime.now(timezone).date().isoformat()
 
 
 def _database_path() -> Path:
-    """Ma'lumotlar bazasi papkasini tayyorlaydi."""
+    """Baza fayli joylashadigan papkani tayyorlaydi."""
 
     path = Path(settings.database_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -50,7 +51,7 @@ def _database_path() -> Path:
 
 @contextmanager
 def get_connection() -> Iterator[sqlite3.Connection]:
-    """SQLite bazasiga xavfsiz ulanish."""
+    """SQLite bazasiga xavfsiz ulanish va tranzaksiya."""
 
     connection = sqlite3.connect(
         str(_database_path()),
@@ -75,11 +76,89 @@ def get_connection() -> Iterator[sqlite3.Connection]:
         connection.close()
 
 
+def _validate_user_id(user_id: int) -> None:
+    if isinstance(user_id, bool) or not isinstance(user_id, int):
+        raise ValueError("Telegram user_id butun son bo‘lishi kerak.")
+
+    if user_id <= 0:
+        raise ValueError("Telegram user_id musbat bo‘lishi kerak.")
+
+
+def _validate_timezone(timezone_name: str) -> str:
+    if not isinstance(timezone_name, str) or not timezone_name.strip():
+        raise ValueError("Vaqt zonasi ko‘rsatilmagan.")
+
+    timezone_name = timezone_name.strip()
+
+    try:
+        ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ValueError(
+            f"Vaqt zonasi noto‘g‘ri: {timezone_name}"
+        ) from exc
+
+    return timezone_name
+
+
+def _validate_prayer_method(method: int) -> int:
+    if isinstance(method, bool) or not isinstance(method, int):
+        raise ValueError("Hisoblash usuli butun son bo‘lishi kerak.")
+
+    if not 0 <= method <= 23:
+        raise ValueError(
+            "Namoz hisoblash usuli 0–23 oralig‘ida bo‘lishi kerak."
+        )
+
+    return method
+
+
+def _validate_reminder_time(value: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Eslatma vaqti matn bo‘lishi kerak.")
+
+    try:
+        parsed = time.fromisoformat(value.strip())
+    except ValueError as exc:
+        raise ValueError(
+            "Eslatma vaqti HH:MM formatida bo‘lishi kerak."
+        ) from exc
+
+    if parsed.tzinfo is not None or parsed.second or parsed.microsecond:
+        raise ValueError("Eslatma vaqti HH:MM formatida bo‘lishi kerak.")
+
+    return parsed.strftime("%H:%M")
+
+
+def _validate_scheduled_at(value: str) -> str:
+    """Eslatma sanasini ISO 8601 formatida tekshiradi."""
+
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Eslatma sanasi ko‘rsatilmagan.")
+
+    value = value.strip()
+
+    try:
+        parsed = datetime.fromisoformat(
+            value.replace("Z", "+00:00")
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "Sana ISO 8601 formatida bo‘lishi kerak."
+        ) from exc
+
+    if parsed.tzinfo is None:
+        raise ValueError(
+            "Eslatma sanasida vaqt zonasi ko‘rsatilishi kerak."
+        )
+
+    return parsed.isoformat(timespec="seconds")
+
+
 def _ensure_user(
     con: sqlite3.Connection,
     user_id: int,
 ) -> None:
-    """Foydalanuvchi mavjudligini tekshiradi."""
+    _validate_user_id(user_id)
 
     row = con.execute(
         "SELECT user_id FROM users WHERE user_id = ?",
@@ -127,23 +206,43 @@ def _ensure_user_settings(
 
 
 # =========================================================
-# JADVALLARNI YARATISH
+# BAZA MIGRATSIYASI
 # =========================================================
 
+def _add_missing_columns(
+    con: sqlite3.Connection,
+    table: str,
+    columns: dict[str, str],
+) -> None:
+    """Eski jadvalga yetishmayotgan ustunlarni xavfsiz qo‘shadi."""
+
+    existing = {
+        row["name"]
+        for row in con.execute(
+            f"PRAGMA table_info({table})"
+        ).fetchall()
+    }
+
+    for column_name, definition in columns.items():
+        if column_name not in existing:
+            con.execute(
+                f"ALTER TABLE {table} "
+                f"ADD COLUMN {column_name} {definition}"
+            )
+
+
 def init_db() -> None:
-    """Barcha jadvallar va indekslarni yaratadi."""
+    """
+    Barcha jadvallarni yaratadi va eski bazani yangilaydi.
 
-    connection = sqlite3.connect(
-        str(_database_path()),
-        timeout=30,
-    )
+    Mavjud foydalanuvchi ma'lumotlarini o‘chirmaydi.
+    """
 
-    try:
-        connection.execute("PRAGMA journal_mode = WAL")
-    finally:
-        connection.close()
+    path = _database_path()
 
     with get_connection() as con:
+        con.execute("PRAGMA journal_mode = WAL")
+
         con.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -154,8 +253,8 @@ def init_db() -> None:
                 language_code TEXT NOT NULL DEFAULT 'uz',
                 is_active INTEGER NOT NULL DEFAULT 1,
                 is_subscribed INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS user_settings (
@@ -167,7 +266,7 @@ def init_db() -> None:
                 reminders_enabled INTEGER NOT NULL DEFAULT 0,
                 morning_reminder TEXT NOT NULL DEFAULT '08:00',
                 evening_reminder TEXT NOT NULL DEFAULT '20:00',
-                updated_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY(user_id)
                     REFERENCES users(user_id)
                     ON DELETE CASCADE
@@ -178,7 +277,7 @@ def init_db() -> None:
                 total_count INTEGER NOT NULL DEFAULT 0,
                 daily_count INTEGER NOT NULL DEFAULT 0,
                 last_date TEXT NOT NULL DEFAULT '',
-                updated_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY(user_id)
                     REFERENCES users(user_id)
                     ON DELETE CASCADE
@@ -189,7 +288,7 @@ def init_db() -> None:
                 total_questions INTEGER NOT NULL DEFAULT 0,
                 correct_answers INTEGER NOT NULL DEFAULT 0,
                 score INTEGER NOT NULL DEFAULT 0,
-                updated_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY(user_id)
                     REFERENCES users(user_id)
                     ON DELETE CASCADE
@@ -201,7 +300,7 @@ def init_db() -> None:
                 question_id TEXT NOT NULL,
                 is_correct INTEGER NOT NULL,
                 points INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY(user_id)
                     REFERENCES users(user_id)
                     ON DELETE CASCADE
@@ -215,12 +314,151 @@ def init_db() -> None:
                 scheduled_at TEXT NOT NULL,
                 sent_at TEXT,
                 status TEXT NOT NULL DEFAULT 'pending',
-                created_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY(user_id)
                     REFERENCES users(user_id)
                     ON DELETE CASCADE
             );
+            """
+        )
 
+        # Eski jadvallardagi yetishmayotgan ustunlarni qo‘shish.
+        _add_missing_columns(
+            con,
+            "users",
+            {
+                "username": "TEXT",
+                "first_name": "TEXT NOT NULL DEFAULT ''",
+                "last_name": "TEXT NOT NULL DEFAULT ''",
+                "language_code": "TEXT NOT NULL DEFAULT 'uz'",
+                "is_active": "INTEGER NOT NULL DEFAULT 1",
+                "is_subscribed": "INTEGER NOT NULL DEFAULT 0",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+                "updated_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
+
+        _add_missing_columns(
+            con,
+            "user_settings",
+            {
+                "country": "TEXT NOT NULL DEFAULT ''",
+                "city": "TEXT NOT NULL DEFAULT ''",
+                "timezone": "TEXT NOT NULL DEFAULT 'Asia/Almaty'",
+                "prayer_method": "INTEGER NOT NULL DEFAULT 3",
+                "reminders_enabled": "INTEGER NOT NULL DEFAULT 0",
+                "morning_reminder": "TEXT NOT NULL DEFAULT '08:00'",
+                "evening_reminder": "TEXT NOT NULL DEFAULT '20:00'",
+                "updated_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
+
+        _add_missing_columns(
+            con,
+            "tasbeh",
+            {
+                "total_count": "INTEGER NOT NULL DEFAULT 0",
+                "daily_count": "INTEGER NOT NULL DEFAULT 0",
+                "last_date": "TEXT NOT NULL DEFAULT ''",
+                "updated_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
+
+        _add_missing_columns(
+            con,
+            "quiz_stats",
+            {
+                "total_questions": "INTEGER NOT NULL DEFAULT 0",
+                "correct_answers": "INTEGER NOT NULL DEFAULT 0",
+                "score": "INTEGER NOT NULL DEFAULT 0",
+                "updated_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
+
+        _add_missing_columns(
+            con,
+            "quiz_attempts",
+            {
+                "question_id": "TEXT NOT NULL DEFAULT ''",
+                "is_correct": "INTEGER NOT NULL DEFAULT 0",
+                "points": "INTEGER NOT NULL DEFAULT 0",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
+
+        _add_missing_columns(
+            con,
+            "reminders",
+            {
+                "reminder_type": "TEXT NOT NULL DEFAULT 'general'",
+                "message": "TEXT NOT NULL DEFAULT ''",
+                "scheduled_at": "TEXT NOT NULL DEFAULT ''",
+                "sent_at": "TEXT",
+                "status": "TEXT NOT NULL DEFAULT 'pending'",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        )
+
+        # Eski yozuvlarning bo‘sh vaqt maydonlarini to‘ldirish.
+        now = utc_now()
+
+        con.execute(
+            """
+            UPDATE users
+            SET created_at = ?
+            WHERE created_at = ''
+            """,
+            (now,),
+        )
+
+        con.execute(
+            """
+            UPDATE users
+            SET updated_at = ?
+            WHERE updated_at = ''
+            """,
+            (now,),
+        )
+
+        con.execute(
+            """
+            UPDATE user_settings
+            SET updated_at = ?
+            WHERE updated_at = ''
+            """,
+            (now,),
+        )
+
+        con.execute(
+            """
+            UPDATE tasbeh
+            SET updated_at = ?
+            WHERE updated_at = ''
+            """,
+            (now,),
+        )
+
+        con.execute(
+            """
+            UPDATE quiz_stats
+            SET updated_at = ?
+            WHERE updated_at = ''
+            """,
+            (now,),
+        )
+
+        con.execute(
+            """
+            UPDATE reminders
+            SET created_at = ?
+            WHERE created_at = ''
+            """,
+            (now,),
+        )
+
+        # Indekslar.
+        con.executescript(
+            """
             CREATE INDEX IF NOT EXISTS idx_quiz_user
                 ON quiz_attempts(user_id);
 
@@ -238,6 +476,9 @@ def init_db() -> None:
             """
         )
 
+    # Bazaga tegishli jadvallar tayyor.
+    _ = path
+
 
 # =========================================================
 # FOYDALANUVCHILAR
@@ -252,10 +493,7 @@ def create_user(
 ) -> dict[str, Any]:
     """Foydalanuvchini yaratadi yoki profilini yangilaydi."""
 
-    if user_id <= 0:
-        raise ValueError(
-            "Telegram user_id musbat bo‘lishi kerak."
-        )
+    _validate_user_id(user_id)
 
     now = utc_now()
 
@@ -329,7 +567,9 @@ def create_user(
 def get_user(
     user_id: int,
 ) -> dict[str, Any] | None:
-    """Foydalanuvchi va uning barcha sozlamalarini qaytaradi."""
+    """Foydalanuvchi va barcha sozlamalarini qaytaradi."""
+
+    _validate_user_id(user_id)
 
     with get_connection() as con:
         row = con.execute(
@@ -383,7 +623,9 @@ def set_subscription(
     user_id: int,
     subscribed: bool,
 ) -> None:
-    """Kanalga obuna holatini saqlaydi."""
+    """Kanal obunasi holatini saqlaydi."""
+
+    _validate_user_id(user_id)
 
     with get_connection() as con:
         cursor = con.execute(
@@ -394,7 +636,7 @@ def set_subscription(
             WHERE user_id = ?
             """,
             (
-                int(subscribed),
+                int(bool(subscribed)),
                 utc_now(),
                 user_id,
             ),
@@ -416,6 +658,11 @@ def set_location(
 ) -> None:
     """Davlat, shahar va vaqt zonasini saqlaydi."""
 
+    _validate_user_id(user_id)
+
+    if not isinstance(country, str) or not isinstance(city, str):
+        raise ValueError("Davlat va shahar matn bo‘lishi kerak.")
+
     country = country.strip()
     city = city.strip()
 
@@ -424,16 +671,12 @@ def set_location(
             "Davlat va shahar nomi bo‘sh bo‘lmasligi kerak."
         )
 
-    selected_timezone = (
-        timezone_name or settings.timezone
-    ).strip()
+    if len(country) > 100 or len(city) > 100:
+        raise ValueError("Shahar yoki davlat nomi juda uzun.")
 
-    try:
-        ZoneInfo(selected_timezone)
-    except (ZoneInfoNotFoundError, ValueError) as exc:
-        raise ValueError(
-            f"Vaqt zonasi noto‘g‘ri: {selected_timezone}"
-        ) from exc
+    selected_timezone = _validate_timezone(
+        timezone_name or settings.timezone
+    )
 
     now = utc_now()
 
@@ -470,10 +713,8 @@ def set_prayer_method(
 ) -> None:
     """Namoz hisoblash usulini saqlaydi."""
 
-    if not 0 <= method <= 23:
-        raise ValueError(
-            "Namoz hisoblash usuli 0–23 oralig‘ida bo‘lishi kerak."
-        )
+    _validate_user_id(user_id)
+    _validate_prayer_method(method)
 
     with get_connection() as con:
         _ensure_user(con, user_id)
@@ -495,34 +736,8 @@ def set_prayer_method(
 
 
 # =========================================================
-# ESLATMALAR
+# ESLATMALAR SOZLAMALARI
 # =========================================================
-
-def _validate_reminder_time(value: str) -> str:
-    """HH:MM formatini tekshiradi."""
-
-    if not isinstance(value, str):
-        raise ValueError(
-            "Eslatma vaqti matn bo‘lishi kerak."
-        )
-
-    try:
-        hour_text, minute_text = value.split(":")
-        hour = int(hour_text)
-        minute = int(minute_text)
-    except (ValueError, AttributeError):
-        raise ValueError(
-            "Vaqt HH:MM formatida bo‘lishi kerak."
-        )
-
-    if not (
-        0 <= hour <= 23
-        and 0 <= minute <= 59
-    ):
-        raise ValueError("Eslatma vaqti noto‘g‘ri.")
-
-    return f"{hour:02d}:{minute:02d}"
-
 
 def set_reminders(
     user_id: int,
@@ -530,14 +745,19 @@ def set_reminders(
     morning: str | None = None,
     evening: str | None = None,
 ) -> None:
-    """Ertalabki va kechki eslatmalar sozlamalarini saqlaydi."""
+    """Tonggi va kechki eslatmalar sozlamalarini saqlaydi."""
+
+    _validate_user_id(user_id)
+
+    if not isinstance(enabled, bool):
+        raise ValueError("Eslatma holati True yoki False bo‘lishi kerak.")
 
     morning_time = _validate_reminder_time(
-        morning or settings.morning_reminder
+        morning if morning is not None else settings.morning_reminder
     )
 
     evening_time = _validate_reminder_time(
-        evening or settings.evening_reminder
+        evening if evening is not None else settings.evening_reminder
     )
 
     with get_connection() as con:
@@ -554,7 +774,7 @@ def set_reminders(
             WHERE user_id = ?
             """,
             (
-                int(bool(enabled)),
+                int(enabled),
                 morning_time,
                 evening_time,
                 utc_now(),
@@ -573,10 +793,10 @@ def increment_tasbeh(
 ) -> dict[str, int]:
     """Tasbeh hisoblagichini oshiradi."""
 
-    if amount <= 0:
-        raise ValueError(
-            "Miqdor musbat bo‘lishi kerak."
-        )
+    _validate_user_id(user_id)
+
+    if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
+        raise ValueError("Miqdor musbat butun son bo‘lishi kerak.")
 
     now = utc_now()
 
@@ -609,20 +829,21 @@ def increment_tasbeh(
         ).fetchone()
 
         if row is None:
+            total = 0
+            daily = 0
+
             con.execute(
                 """
-                INSERT INTO tasbeh (user_id, updated_at)
+                INSERT INTO tasbeh (
+                    user_id,
+                    updated_at
+                )
                 VALUES (?, ?)
                 """,
                 (user_id, now),
             )
-
-            total = 0
-            daily = 0
-
         else:
             total = row["total_count"]
-
             daily = (
                 row["daily_count"]
                 if row["last_date"] == today
@@ -659,6 +880,8 @@ def increment_tasbeh(
 def reset_daily_tasbeh(user_id: int) -> None:
     """Kunlik tasbeh hisoblagichini nolga tushiradi."""
 
+    _validate_user_id(user_id)
+
     with get_connection() as con:
         _ensure_user(con, user_id)
         _ensure_user_settings(con, user_id)
@@ -680,6 +903,17 @@ def reset_daily_tasbeh(user_id: int) -> None:
 
         con.execute(
             """
+            INSERT OR IGNORE INTO tasbeh (
+                user_id,
+                updated_at
+            )
+            VALUES (?, ?)
+            """,
+            (user_id, utc_now()),
+        )
+
+        con.execute(
+            """
             UPDATE tasbeh
             SET daily_count = 0,
                 last_date = ?,
@@ -695,7 +929,7 @@ def reset_daily_tasbeh(user_id: int) -> None:
 
 
 # =========================================================
-# SIYRAT / VIKTORINA NATIJALARI
+# SIYRAT / VIKTORINA
 # =========================================================
 
 def add_quiz_result(
@@ -704,17 +938,21 @@ def add_quiz_result(
     is_correct: bool,
     points: int = 20,
 ) -> dict[str, int]:
-    """Viktorina javobi va ballarini saqlaydi."""
+    """Viktorina natijasi va ballarini saqlaydi."""
 
-    if points < 0:
-        raise ValueError(
-            "Ball manfiy bo‘lishi mumkin emas."
-        )
+    _validate_user_id(user_id)
 
-    if not question_id:
-        raise ValueError(
-            "Savol ID bo‘sh bo‘lmasligi kerak."
-        )
+    if not isinstance(question_id, str) or not question_id.strip():
+        raise ValueError("Savol ID bo‘sh bo‘lmasligi kerak.")
+
+    if len(question_id) > 100:
+        raise ValueError("Savol ID juda uzun.")
+
+    if not isinstance(is_correct, bool):
+        raise ValueError("Javob holati True yoki False bo‘lishi kerak.")
+
+    if isinstance(points, bool) or not isinstance(points, int) or points < 0:
+        raise ValueError("Ball manfiy bo‘lmagan butun son bo‘lishi kerak.")
 
     awarded_points = points if is_correct else 0
     now = utc_now()
@@ -746,7 +984,7 @@ def add_quiz_result(
             """,
             (
                 user_id,
-                str(question_id),
+                question_id.strip(),
                 int(is_correct),
                 awarded_points,
                 now,
@@ -783,9 +1021,7 @@ def add_quiz_result(
         ).fetchone()
 
     if row is None:
-        raise RuntimeError(
-            "Viktorina natijasini olish imkoni bo‘lmadi."
-        )
+        raise RuntimeError("Viktorina natijasi topilmadi.")
 
     return dict(row)
 
@@ -795,10 +1031,11 @@ def get_leaderboard(
 ) -> list[dict[str, Any]]:
     """Eng ko‘p ball to‘plagan faol foydalanuvchilar."""
 
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise ValueError("Limit butun son bo‘lishi kerak.")
+
     if not 1 <= limit <= 100:
-        raise ValueError(
-            "Limit 1 dan 100 gacha bo‘lishi kerak."
-        )
+        raise ValueError("Limit 1 dan 100 gacha bo‘lishi kerak.")
 
     with get_connection() as con:
         rows = con.execute(
@@ -839,12 +1076,20 @@ def add_reminder(
     message: str,
     scheduled_at: str,
 ) -> int:
-    """Yangi rejalashtirilgan eslatmani bazaga qo‘shadi."""
+    """Yangi eslatmani bazaga qo‘shadi."""
 
-    if not reminder_type.strip() or not message.strip():
-        raise ValueError(
-            "Eslatma turi va matni bo‘sh bo‘lmasligi kerak."
-        )
+    _validate_user_id(user_id)
+
+    if not isinstance(reminder_type, str) or not reminder_type.strip():
+        raise ValueError("Eslatma turi bo‘sh bo‘lmasligi kerak.")
+
+    if not isinstance(message, str) or not message.strip():
+        raise ValueError("Eslatma matni bo‘sh bo‘lmasligi kerak.")
+
+    if len(reminder_type) > 50 or len(message) > 4000:
+        raise ValueError("Eslatma ma'lumotlari juda uzun.")
+
+    scheduled_value = _validate_scheduled_at(scheduled_at)
 
     with get_connection() as con:
         _ensure_user(con, user_id)
@@ -865,7 +1110,7 @@ def add_reminder(
                 user_id,
                 reminder_type.strip(),
                 message.strip(),
-                scheduled_at,
+                scheduled_value,
                 utc_now(),
             ),
         )
@@ -878,10 +1123,11 @@ def get_pending_reminders(
 ) -> list[dict[str, Any]]:
     """Yuborilishi kutilayotgan eslatmalarni qaytaradi."""
 
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise ValueError("Limit butun son bo‘lishi kerak.")
+
     if not 1 <= limit <= 1000:
-        raise ValueError(
-            "Limit 1 dan 1000 gacha bo‘lishi kerak."
-        )
+        raise ValueError("Limit 1 dan 1000 gacha bo‘lishi kerak.")
 
     with get_connection() as con:
         rows = con.execute(
@@ -917,6 +1163,9 @@ def get_pending_reminders(
 def mark_reminder_sent(reminder_id: int) -> None:
     """Eslatmani yuborilgan deb belgilaydi."""
 
+    if isinstance(reminder_id, bool) or not isinstance(reminder_id, int) or reminder_id <= 0:
+        raise ValueError("Eslatma ID noto‘g‘ri.")
+
     with get_connection() as con:
         con.execute(
             """
@@ -935,6 +1184,9 @@ def mark_reminder_sent(reminder_id: int) -> None:
 
 def mark_reminder_failed(reminder_id: int) -> None:
     """Xatolik bilan yakunlangan eslatmani belgilaydi."""
+
+    if isinstance(reminder_id, bool) or not isinstance(reminder_id, int) or reminder_id <= 0:
+        raise ValueError("Eslatma ID noto‘g‘ri.")
 
     with get_connection() as con:
         con.execute(
@@ -955,8 +1207,10 @@ def mark_reminder_failed(reminder_id: int) -> None:
 def deactivate_user(user_id: int) -> None:
     """Foydalanuvchini faol emas deb belgilaydi."""
 
+    _validate_user_id(user_id)
+
     with get_connection() as con:
-        con.execute(
+        cursor = con.execute(
             """
             UPDATE users
             SET is_active = 0,
@@ -968,6 +1222,9 @@ def deactivate_user(user_id: int) -> None:
                 user_id,
             ),
         )
+
+        if cursor.rowcount == 0:
+            raise ValueError("Foydalanuvchi topilmadi.")
 
 
 def get_active_user_ids() -> list[int]:
