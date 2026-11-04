@@ -1,57 +1,59 @@
-"""
-TAQVO PRO MAX — SQLite ma'lumotlar bazasi.
-Python 3.11+
-Xavfsiz ulanish, migratsiya va ma'lumotlarni boshqarish.
-"""
-
 from __future__ import annotations
 
 import sqlite3
+import logging
+
 from contextlib import contextmanager
-from datetime import date, datetime, time
+from datetime import datetime, date, timezone
 from pathlib import Path
 from typing import Any, Iterator
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 from config import settings
 
 
+logger = logging.getLogger(__name__)
+
+
 # =========================================================
-# UMUMIY SOZLAMALAR
+# DATABASE CONNECTION
 # =========================================================
-
-def utc_now() -> str:
-    """Joriy UTC vaqtini ISO formatida qaytaradi."""
-    return datetime.now(ZoneInfo("UTC")).isoformat(
-        timespec="seconds"
-    )
-
-
-def local_today(timezone_name: str | None = None) -> str:
-    """Foydalanuvchining mahalliy sanasini qaytaradi."""
-
-    selected_timezone = timezone_name or settings.timezone
-
-    try:
-        timezone = ZoneInfo(selected_timezone)
-    except (ZoneInfoNotFoundError, ValueError):
-        timezone = ZoneInfo(settings.timezone)
-
-    return datetime.now(timezone).date().isoformat()
-
 
 def _database_path() -> Path:
-    """Baza fayli joylashadigan papkani tayyorlaydi."""
+    """SQLite bazasi joylashgan manzil."""
 
     path = Path(settings.database_path).expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     return path
 
 
+def utc_now() -> str:
+    """Joriy UTC vaqt."""
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def local_today(timezone_name: str | None = None) -> str:
+    """Foydalanuvchining mahalliy sanasi."""
+
+    timezone_name = timezone_name or settings.timezone
+
+    try:
+        tz = ZoneInfo(timezone_name)
+    except Exception:
+        tz = ZoneInfo("UTC")
+
+    return datetime.now(tz).date().isoformat()
+
+
 @contextmanager
 def get_connection() -> Iterator[sqlite3.Connection]:
-    """SQLite bazasiga xavfsiz ulanish va tranzaksiya."""
+    """SQLite ulanishini xavfsiz boshqarish."""
 
     connection = sqlite3.connect(
         str(_database_path()),
@@ -60,12 +62,11 @@ def get_connection() -> Iterator[sqlite3.Connection]:
 
     connection.row_factory = sqlite3.Row
 
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 30000")
+
     try:
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA busy_timeout = 30000")
-
         yield connection
-
         connection.commit()
 
     except Exception:
@@ -76,578 +77,438 @@ def get_connection() -> Iterator[sqlite3.Connection]:
         connection.close()
 
 
-def _validate_user_id(user_id: int) -> None:
-    if isinstance(user_id, bool) or not isinstance(user_id, int):
-        raise ValueError("Telegram user_id butun son bo‘lishi kerak.")
+def _columns(
+    connection: sqlite3.Connection,
+    table: str,
+) -> set[str]:
+    """Jadval ustunlarini olish."""
 
-    if user_id <= 0:
-        raise ValueError("Telegram user_id musbat bo‘lishi kerak.")
+    rows = connection.execute(
+        f"PRAGMA table_info({table})"
+    ).fetchall()
 
-
-def _validate_timezone(timezone_name: str) -> str:
-    if not isinstance(timezone_name, str) or not timezone_name.strip():
-        raise ValueError("Vaqt zonasi ko‘rsatilmagan.")
-
-    timezone_name = timezone_name.strip()
-
-    try:
-        ZoneInfo(timezone_name)
-    except (ZoneInfoNotFoundError, ValueError) as exc:
-        raise ValueError(
-            f"Vaqt zonasi noto‘g‘ri: {timezone_name}"
-        ) from exc
-
-    return timezone_name
+    return {row["name"] for row in rows}
 
 
-def _validate_prayer_method(method: int) -> int:
-    if isinstance(method, bool) or not isinstance(method, int):
-        raise ValueError("Hisoblash usuli butun son bo‘lishi kerak.")
+def _add_column(
+    connection: sqlite3.Connection,
+    table: str,
+    column: str,
+    definition: str,
+) -> None:
+    """Eski bazaga yangi ustun qo‘shish."""
 
-    if not 0 <= method <= 23:
-        raise ValueError(
-            "Namoz hisoblash usuli 0–23 oralig‘ida bo‘lishi kerak."
+    if column not in _columns(connection, table):
+        connection.execute(
+            f"ALTER TABLE {table} "
+            f"ADD COLUMN {column} {definition}"
         )
 
-    return method
 
+# =========================================================
+# DATABASE INITIALIZATION
+# =========================================================
 
-def _validate_reminder_time(value: str) -> str:
-    if not isinstance(value, str):
-        raise ValueError("Eslatma vaqti matn bo‘lishi kerak.")
+def init_db() -> None:
+    """Barcha jadvallarni yaratish va bazani yangilash."""
 
-    try:
-        parsed = time.fromisoformat(value.strip())
-    except ValueError as exc:
-        raise ValueError(
-            "Eslatma vaqti HH:MM formatida bo‘lishi kerak."
-        ) from exc
+    with get_connection() as con:
 
-    if parsed.tzinfo is not None or parsed.second or parsed.microsecond:
-        raise ValueError("Eslatma vaqti HH:MM formatida bo‘lishi kerak.")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                language_code TEXT DEFAULT 'uz',
+                is_subscribed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
 
-    return parsed.strftime("%H:%M")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS user_settings (
+                user_id INTEGER PRIMARY KEY,
+                city TEXT,
+                country TEXT,
+                timezone TEXT,
+                prayer_method INTEGER NOT NULL DEFAULT 3,
+                reminders_enabled INTEGER NOT NULL DEFAULT 1,
+                morning_reminder TEXT NOT NULL DEFAULT '08:00',
+                evening_reminder TEXT NOT NULL DEFAULT '20:00',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(user_id)
+                    REFERENCES users(user_id)
+                    ON DELETE CASCADE
+            )
+        """)
 
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tasbeh (
+                user_id INTEGER PRIMARY KEY,
+                total_count INTEGER NOT NULL DEFAULT 0,
+                daily_count INTEGER NOT NULL DEFAULT 0,
+                last_date TEXT,
+                current_zikr TEXT DEFAULT 'Subhanalloh',
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(user_id)
+                    REFERENCES users(user_id)
+                    ON DELETE CASCADE
+            )
+        """)
 
-def _validate_scheduled_at(value: str) -> str:
-    """Eslatma sanasini ISO 8601 formatida tekshiradi."""
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tasbeh_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                zikr TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(user_id)
+                    REFERENCES users(user_id)
+                    ON DELETE CASCADE
+            )
+        """)
 
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError("Eslatma sanasi ko‘rsatilmagan.")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS quiz_stats (
+                user_id INTEGER PRIMARY KEY,
+                total_questions INTEGER NOT NULL DEFAULT 0,
+                correct_answers INTEGER NOT NULL DEFAULT 0,
+                total_points INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(user_id)
+                    REFERENCES users(user_id)
+                    ON DELETE CASCADE
+            )
+        """)
 
-    value = value.strip()
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS quiz_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                question TEXT NOT NULL,
+                selected_answer TEXT,
+                correct_answer TEXT NOT NULL,
+                is_correct INTEGER NOT NULL DEFAULT 0,
+                points INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(user_id)
+                    REFERENCES users(user_id)
+                    ON DELETE CASCADE
+            )
+        """)
 
-    try:
-        parsed = datetime.fromisoformat(
-            value.replace("Z", "+00:00")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                reminder_type TEXT NOT NULL,
+                scheduled_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                sent_at TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(user_id)
+                    REFERENCES users(user_id)
+                    ON DELETE CASCADE
+            )
+        """)
+
+        # Eski bazalar uchun migratsiya.
+        _add_column(
+            con, "users", "username", "TEXT"
         )
-    except ValueError as exc:
-        raise ValueError(
-            "Sana ISO 8601 formatida bo‘lishi kerak."
-        ) from exc
-
-    if parsed.tzinfo is None:
-        raise ValueError(
-            "Eslatma sanasida vaqt zonasi ko‘rsatilishi kerak."
+        _add_column(
+            con, "users", "first_name", "TEXT"
+        )
+        _add_column(
+            con, "users", "language_code", "TEXT DEFAULT 'uz'"
+        )
+        _add_column(
+            con, "users", "is_subscribed", "INTEGER NOT NULL DEFAULT 0"
+        )
+        _add_column(
+            con, "users", "created_at", "TEXT"
+        )
+        _add_column(
+            con, "users", "updated_at", "TEXT"
         )
 
-    return parsed.isoformat(timespec="seconds")
+        _add_column(
+            con, "user_settings", "city", "TEXT"
+        )
+        _add_column(
+            con, "user_settings", "country", "TEXT"
+        )
+        _add_column(
+            con, "user_settings", "timezone", "TEXT"
+        )
+        _add_column(
+            con, "user_settings", "prayer_method",
+            "INTEGER NOT NULL DEFAULT 3"
+        )
+        _add_column(
+            con, "user_settings", "reminders_enabled",
+            "INTEGER NOT NULL DEFAULT 1"
+        )
+        _add_column(
+            con, "user_settings", "morning_reminder",
+            "TEXT NOT NULL DEFAULT '08:00'"
+        )
+        _add_column(
+            con, "user_settings", "evening_reminder",
+            "TEXT NOT NULL DEFAULT '20:00'"
+        )
+        _add_column(
+            con, "user_settings", "created_at", "TEXT"
+        )
+        _add_column(
+            con, "user_settings", "updated_at", "TEXT"
+        )
 
+        _add_column(
+            con, "tasbeh", "total_count",
+            "INTEGER NOT NULL DEFAULT 0"
+        )
+        _add_column(
+            con, "tasbeh", "daily_count",
+            "INTEGER NOT NULL DEFAULT 0"
+        )
+        _add_column(
+            con, "tasbeh", "last_date", "TEXT"
+        )
+        _add_column(
+            con, "tasbeh", "current_zikr",
+            "TEXT DEFAULT 'Subhanalloh'"
+        )
+        _add_column(
+            con, "tasbeh", "updated_at", "TEXT"
+        )
+
+        _add_column(
+            con, "quiz_stats", "total_questions",
+            "INTEGER NOT NULL DEFAULT 0"
+        )
+        _add_column(
+            con, "quiz_stats", "correct_answers",
+            "INTEGER NOT NULL DEFAULT 0"
+        )
+        _add_column(
+            con, "quiz_stats", "total_points",
+            "INTEGER NOT NULL DEFAULT 0"
+        )
+        _add_column(
+            con, "quiz_stats", "updated_at", "TEXT"
+        )
+
+        _add_column(
+            con, "reminders", "reminder_type", "TEXT"
+        )
+        _add_column(
+            con, "reminders", "scheduled_at", "TEXT"
+        )
+        _add_column(
+            con, "reminders", "status",
+            "TEXT NOT NULL DEFAULT 'pending'"
+        )
+        _add_column(
+            con, "reminders", "sent_at", "TEXT"
+        )
+        _add_column(
+            con, "reminders", "created_at", "TEXT"
+        )
+
+        now = utc_now()
+
+        con.execute("""
+            UPDATE users
+            SET created_at = COALESCE(created_at, ?),
+                updated_at = COALESCE(updated_at, ?)
+        """, (now, now))
+
+        con.execute("""
+            UPDATE user_settings
+            SET created_at = COALESCE(created_at, ?),
+                updated_at = COALESCE(updated_at, ?)
+        """, (now, now))
+
+        con.execute("""
+            CREATE INDEX IF NOT EXISTS idx_reminders_due
+            ON reminders(status, scheduled_at)
+        """)
+
+        con.execute("""
+            CREATE INDEX IF NOT EXISTS idx_quiz_user
+            ON quiz_attempts(user_id, created_at)
+        """)
+
+        con.execute("""
+            CREATE INDEX IF NOT EXISTS idx_tasbeh_user
+            ON tasbeh_history(user_id, created_at)
+        """)
+
+    logger.info("TAQVO PRO MAX database initialized.")
+
+
+# =========================================================
+# USER MANAGEMENT
+# =========================================================
 
 def _ensure_user(
     con: sqlite3.Connection,
     user_id: int,
 ) -> None:
-    _validate_user_id(user_id)
 
-    row = con.execute(
-        "SELECT user_id FROM users WHERE user_id = ?",
-        (user_id,),
-    ).fetchone()
+    now = utc_now()
 
-    if row is None:
-        raise ValueError(
-            "Foydalanuvchi topilmadi. Avval /start yuboring."
+    con.execute("""
+        INSERT OR IGNORE INTO users (
+            user_id,
+            created_at,
+            updated_at
         )
+        VALUES (?, ?, ?)
+    """, (user_id, now, now))
 
 
 def _ensure_user_settings(
     con: sqlite3.Connection,
     user_id: int,
 ) -> None:
-    """Foydalanuvchi sozlamalari mavjudligini kafolatlaydi."""
 
     now = utc_now()
 
-    con.execute(
-        """
+    con.execute("""
         INSERT OR IGNORE INTO user_settings (
             user_id,
-            country,
-            city,
             timezone,
             prayer_method,
             reminders_enabled,
             morning_reminder,
             evening_reminder,
+            created_at,
             updated_at
         )
-        VALUES (?, '', '', ?, ?, 0, ?, ?, ?)
-        """,
-        (
-            user_id,
-            settings.timezone,
-            settings.prayer_method,
-            settings.morning_reminder,
-            settings.evening_reminder,
-            now,
-        ),
-    )
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+    """, (
+        user_id,
+        settings.timezone,
+        settings.prayer_method,
+        settings.morning_reminder,
+        settings.evening_reminder,
+        now,
+        now,
+    ))
 
-
-# =========================================================
-# BAZA MIGRATSIYASI
-# =========================================================
-
-def _add_missing_columns(
-    con: sqlite3.Connection,
-    table: str,
-    columns: dict[str, str],
-) -> None:
-    """Eski jadvalga yetishmayotgan ustunlarni xavfsiz qo‘shadi."""
-
-    existing = {
-        row["name"]
-        for row in con.execute(
-            f"PRAGMA table_info({table})"
-        ).fetchall()
-    }
-
-    for column_name, definition in columns.items():
-        if column_name not in existing:
-            con.execute(
-                f"ALTER TABLE {table} "
-                f"ADD COLUMN {column_name} {definition}"
-            )
-
-
-def init_db() -> None:
-    """
-    Barcha jadvallarni yaratadi va eski bazani yangilaydi.
-
-    Mavjud foydalanuvchi ma'lumotlarini o‘chirmaydi.
-    """
-
-    path = _database_path()
-
-    with get_connection() as con:
-        con.execute("PRAGMA journal_mode = WAL")
-
-        con.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT,
-                first_name TEXT NOT NULL DEFAULT '',
-                last_name TEXT NOT NULL DEFAULT '',
-                language_code TEXT NOT NULL DEFAULT 'uz',
-                is_active INTEGER NOT NULL DEFAULT 1,
-                is_subscribed INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT '',
-                updated_at TEXT NOT NULL DEFAULT ''
-            );
-
-            CREATE TABLE IF NOT EXISTS user_settings (
-                user_id INTEGER PRIMARY KEY,
-                country TEXT NOT NULL DEFAULT '',
-                city TEXT NOT NULL DEFAULT '',
-                timezone TEXT NOT NULL DEFAULT 'Asia/Almaty',
-                prayer_method INTEGER NOT NULL DEFAULT 3,
-                reminders_enabled INTEGER NOT NULL DEFAULT 0,
-                morning_reminder TEXT NOT NULL DEFAULT '08:00',
-                evening_reminder TEXT NOT NULL DEFAULT '20:00',
-                updated_at TEXT NOT NULL DEFAULT '',
-                FOREIGN KEY(user_id)
-                    REFERENCES users(user_id)
-                    ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS tasbeh (
-                user_id INTEGER PRIMARY KEY,
-                total_count INTEGER NOT NULL DEFAULT 0,
-                daily_count INTEGER NOT NULL DEFAULT 0,
-                last_date TEXT NOT NULL DEFAULT '',
-                updated_at TEXT NOT NULL DEFAULT '',
-                FOREIGN KEY(user_id)
-                    REFERENCES users(user_id)
-                    ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS quiz_stats (
-                user_id INTEGER PRIMARY KEY,
-                total_questions INTEGER NOT NULL DEFAULT 0,
-                correct_answers INTEGER NOT NULL DEFAULT 0,
-                score INTEGER NOT NULL DEFAULT 0,
-                updated_at TEXT NOT NULL DEFAULT '',
-                FOREIGN KEY(user_id)
-                    REFERENCES users(user_id)
-                    ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS quiz_attempts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                question_id TEXT NOT NULL,
-                is_correct INTEGER NOT NULL,
-                points INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT '',
-                FOREIGN KEY(user_id)
-                    REFERENCES users(user_id)
-                    ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS reminders (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                reminder_type TEXT NOT NULL,
-                message TEXT NOT NULL,
-                scheduled_at TEXT NOT NULL,
-                sent_at TEXT,
-                status TEXT NOT NULL DEFAULT 'pending',
-                created_at TEXT NOT NULL DEFAULT '',
-                FOREIGN KEY(user_id)
-                    REFERENCES users(user_id)
-                    ON DELETE CASCADE
-            );
-            """
-        )
-
-        # Eski jadvallardagi yetishmayotgan ustunlarni qo‘shish.
-        _add_missing_columns(
-            con,
-            "users",
-            {
-                "username": "TEXT",
-                "first_name": "TEXT NOT NULL DEFAULT ''",
-                "last_name": "TEXT NOT NULL DEFAULT ''",
-                "language_code": "TEXT NOT NULL DEFAULT 'uz'",
-                "is_active": "INTEGER NOT NULL DEFAULT 1",
-                "is_subscribed": "INTEGER NOT NULL DEFAULT 0",
-                "created_at": "TEXT NOT NULL DEFAULT ''",
-                "updated_at": "TEXT NOT NULL DEFAULT ''",
-            },
-        )
-
-        _add_missing_columns(
-            con,
-            "user_settings",
-            {
-                "country": "TEXT NOT NULL DEFAULT ''",
-                "city": "TEXT NOT NULL DEFAULT ''",
-                "timezone": "TEXT NOT NULL DEFAULT 'Asia/Almaty'",
-                "prayer_method": "INTEGER NOT NULL DEFAULT 3",
-                "reminders_enabled": "INTEGER NOT NULL DEFAULT 0",
-                "morning_reminder": "TEXT NOT NULL DEFAULT '08:00'",
-                "evening_reminder": "TEXT NOT NULL DEFAULT '20:00'",
-                "updated_at": "TEXT NOT NULL DEFAULT ''",
-            },
-        )
-
-        _add_missing_columns(
-            con,
-            "tasbeh",
-            {
-                "total_count": "INTEGER NOT NULL DEFAULT 0",
-                "daily_count": "INTEGER NOT NULL DEFAULT 0",
-                "last_date": "TEXT NOT NULL DEFAULT ''",
-                "updated_at": "TEXT NOT NULL DEFAULT ''",
-            },
-        )
-
-        _add_missing_columns(
-            con,
-            "quiz_stats",
-            {
-                "total_questions": "INTEGER NOT NULL DEFAULT 0",
-                "correct_answers": "INTEGER NOT NULL DEFAULT 0",
-                "score": "INTEGER NOT NULL DEFAULT 0",
-                "updated_at": "TEXT NOT NULL DEFAULT ''",
-            },
-        )
-
-        _add_missing_columns(
-            con,
-            "quiz_attempts",
-            {
-                "question_id": "TEXT NOT NULL DEFAULT ''",
-                "is_correct": "INTEGER NOT NULL DEFAULT 0",
-                "points": "INTEGER NOT NULL DEFAULT 0",
-                "created_at": "TEXT NOT NULL DEFAULT ''",
-            },
-        )
-
-        _add_missing_columns(
-            con,
-            "reminders",
-            {
-                "reminder_type": "TEXT NOT NULL DEFAULT 'general'",
-                "message": "TEXT NOT NULL DEFAULT ''",
-                "scheduled_at": "TEXT NOT NULL DEFAULT ''",
-                "sent_at": "TEXT",
-                "status": "TEXT NOT NULL DEFAULT 'pending'",
-                "created_at": "TEXT NOT NULL DEFAULT ''",
-            },
-        )
-
-        # Eski yozuvlarning bo‘sh vaqt maydonlarini to‘ldirish.
-        now = utc_now()
-
-        con.execute(
-            """
-            UPDATE users
-            SET created_at = ?
-            WHERE created_at = ''
-            """,
-            (now,),
-        )
-
-        con.execute(
-            """
-            UPDATE users
-            SET updated_at = ?
-            WHERE updated_at = ''
-            """,
-            (now,),
-        )
-
-        con.execute(
-            """
-            UPDATE user_settings
-            SET updated_at = ?
-            WHERE updated_at = ''
-            """,
-            (now,),
-        )
-
-        con.execute(
-            """
-            UPDATE tasbeh
-            SET updated_at = ?
-            WHERE updated_at = ''
-            """,
-            (now,),
-        )
-
-        con.execute(
-            """
-            UPDATE quiz_stats
-            SET updated_at = ?
-            WHERE updated_at = ''
-            """,
-            (now,),
-        )
-
-        con.execute(
-            """
-            UPDATE reminders
-            SET created_at = ?
-            WHERE created_at = ''
-            """,
-            (now,),
-        )
-
-        # Indekslar.
-        con.executescript(
-            """
-            CREATE INDEX IF NOT EXISTS idx_quiz_user
-                ON quiz_attempts(user_id);
-
-            CREATE INDEX IF NOT EXISTS idx_reminders_status
-                ON reminders(status, scheduled_at);
-
-            CREATE INDEX IF NOT EXISTS idx_reminders_user
-                ON reminders(user_id, status);
-
-            CREATE INDEX IF NOT EXISTS idx_users_active
-                ON users(is_active);
-
-            CREATE INDEX IF NOT EXISTS idx_users_subscription
-                ON users(is_subscribed);
-            """
-        )
-
-    # Bazaga tegishli jadvallar tayyor.
-    _ = path
-
-
-# =========================================================
-# FOYDALANUVCHILAR
-# =========================================================
 
 def create_user(
     user_id: int,
-    first_name: str = "",
-    last_name: str = "",
     username: str | None = None,
+    first_name: str | None = None,
     language_code: str = "uz",
-) -> dict[str, Any]:
-    """Foydalanuvchini yaratadi yoki profilini yangilaydi."""
-
-    _validate_user_id(user_id)
+) -> None:
 
     now = utc_now()
 
     with get_connection() as con:
-        con.execute(
-            """
+
+        con.execute("""
             INSERT INTO users (
                 user_id,
                 username,
                 first_name,
-                last_name,
                 language_code,
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
                 username = excluded.username,
                 first_name = excluded.first_name,
-                last_name = excluded.last_name,
                 language_code = excluded.language_code,
-                is_active = 1,
                 updated_at = excluded.updated_at
-            """,
-            (
-                user_id,
-                username,
-                first_name or "",
-                last_name or "",
-                language_code or "uz",
-                now,
-                now,
-            ),
-        )
+        """, (
+            user_id,
+            username,
+            first_name,
+            language_code,
+            now,
+            now,
+        ))
 
         _ensure_user_settings(con, user_id)
 
-        con.execute(
-            """
+        con.execute("""
             INSERT OR IGNORE INTO tasbeh (
                 user_id,
                 updated_at
             )
             VALUES (?, ?)
-            """,
-            (user_id, now),
-        )
+        """, (user_id, now))
 
-        con.execute(
-            """
+        con.execute("""
             INSERT OR IGNORE INTO quiz_stats (
                 user_id,
                 updated_at
             )
             VALUES (?, ?)
-            """,
-            (user_id, now),
-        )
-
-    result = get_user(user_id)
-
-    if result is None:
-        raise RuntimeError(
-            "Foydalanuvchi bazaga saqlanmadi."
-        )
-
-    return result
+        """, (user_id, now))
 
 
-def get_user(
-    user_id: int,
-) -> dict[str, Any] | None:
-    """Foydalanuvchi va barcha sozlamalarini qaytaradi."""
-
-    _validate_user_id(user_id)
+def get_user(user_id: int) -> dict[str, Any] | None:
 
     with get_connection() as con:
-        row = con.execute(
-            """
+
+        row = con.execute("""
             SELECT
                 u.user_id,
                 u.username,
                 u.first_name,
-                u.last_name,
                 u.language_code,
-                u.is_active,
                 u.is_subscribed,
-                u.created_at,
-                u.updated_at,
-
-                s.country,
                 s.city,
+                s.country,
                 s.timezone,
                 s.prayer_method,
                 s.reminders_enabled,
                 s.morning_reminder,
-                s.evening_reminder,
-
-                t.total_count AS tasbeh_total,
-                t.daily_count AS tasbeh_daily,
-
-                q.total_questions,
-                q.correct_answers,
-                q.score
-
-            FROM users AS u
-
-            LEFT JOIN user_settings AS s
+                s.evening_reminder
+            FROM users u
+            LEFT JOIN user_settings s
                 ON s.user_id = u.user_id
-
-            LEFT JOIN tasbeh AS t
-                ON t.user_id = u.user_id
-
-            LEFT JOIN quiz_stats AS q
-                ON q.user_id = u.user_id
-
             WHERE u.user_id = ?
-            """,
-            (user_id,),
-        ).fetchone()
+        """, (user_id,)).fetchone()
 
-    return dict(row) if row else None
+        return dict(row) if row else None
 
 
 def set_subscription(
     user_id: int,
     subscribed: bool,
 ) -> None:
-    """Kanal obunasi holatini saqlaydi."""
-
-    _validate_user_id(user_id)
 
     with get_connection() as con:
-        cursor = con.execute(
-            """
+
+        _ensure_user(con, user_id)
+
+        con.execute("""
             UPDATE users
             SET is_subscribed = ?,
                 updated_at = ?
             WHERE user_id = ?
-            """,
-            (
-                int(bool(subscribed)),
-                utc_now(),
-                user_id,
-            ),
-        )
+        """, (int(subscribed), utc_now(), user_id))
 
-        if cursor.rowcount == 0:
-            raise ValueError("Foydalanuvchi topilmadi.")
+
+def is_subscribed(user_id: int) -> bool:
+
+    user = get_user(user_id)
+
+    return bool(user and user["is_subscribed"])
 
 
 # =========================================================
-# JOYLASHUV
+# USER SETTINGS
 # =========================================================
 
 def set_location(
@@ -656,88 +517,48 @@ def set_location(
     city: str,
     timezone_name: str | None = None,
 ) -> None:
-    """Davlat, shahar va vaqt zonasini saqlaydi."""
-
-    _validate_user_id(user_id)
-
-    if not isinstance(country, str) or not isinstance(city, str):
-        raise ValueError("Davlat va shahar matn bo‘lishi kerak.")
-
-    country = country.strip()
-    city = city.strip()
-
-    if not country or not city:
-        raise ValueError(
-            "Davlat va shahar nomi bo‘sh bo‘lmasligi kerak."
-        )
-
-    if len(country) > 100 or len(city) > 100:
-        raise ValueError("Shahar yoki davlat nomi juda uzun.")
-
-    selected_timezone = _validate_timezone(
-        timezone_name or settings.timezone
-    )
-
-    now = utc_now()
 
     with get_connection() as con:
+
         _ensure_user(con, user_id)
         _ensure_user_settings(con, user_id)
 
-        con.execute(
-            """
+        con.execute("""
             UPDATE user_settings
             SET country = ?,
                 city = ?,
-                timezone = ?,
+                timezone = COALESCE(?, timezone),
                 updated_at = ?
             WHERE user_id = ?
-            """,
-            (
-                country,
-                city,
-                selected_timezone,
-                now,
-                user_id,
-            ),
-        )
+        """, (
+            country,
+            city,
+            timezone_name,
+            utc_now(),
+            user_id,
+        ))
 
-
-# =========================================================
-# NAMOZ SOZLAMALARI
-# =========================================================
 
 def set_prayer_method(
     user_id: int,
     method: int,
 ) -> None:
-    """Namoz hisoblash usulini saqlaydi."""
 
-    _validate_user_id(user_id)
-    _validate_prayer_method(method)
+    if not 0 <= int(method) <= 23:
+        raise ValueError("Namoz hisoblash usuli noto‘g‘ri.")
 
     with get_connection() as con:
+
         _ensure_user(con, user_id)
         _ensure_user_settings(con, user_id)
 
-        con.execute(
-            """
+        con.execute("""
             UPDATE user_settings
             SET prayer_method = ?,
                 updated_at = ?
             WHERE user_id = ?
-            """,
-            (
-                method,
-                utc_now(),
-                user_id,
-            ),
-        )
+        """, (int(method), utc_now(), user_id))
 
-
-# =========================================================
-# ESLATMALAR SOZLAMALARI
-# =========================================================
 
 def set_reminders(
     user_id: int,
@@ -745,502 +566,472 @@ def set_reminders(
     morning: str | None = None,
     evening: str | None = None,
 ) -> None:
-    """Tonggi va kechki eslatmalar sozlamalarini saqlaydi."""
-
-    _validate_user_id(user_id)
-
-    if not isinstance(enabled, bool):
-        raise ValueError("Eslatma holati True yoki False bo‘lishi kerak.")
-
-    morning_time = _validate_reminder_time(
-        morning if morning is not None else settings.morning_reminder
-    )
-
-    evening_time = _validate_reminder_time(
-        evening if evening is not None else settings.evening_reminder
-    )
 
     with get_connection() as con:
+
         _ensure_user(con, user_id)
         _ensure_user_settings(con, user_id)
 
-        con.execute(
-            """
+        con.execute("""
             UPDATE user_settings
             SET reminders_enabled = ?,
-                morning_reminder = ?,
-                evening_reminder = ?,
+                morning_reminder = COALESCE(?, morning_reminder),
+                evening_reminder = COALESCE(?, evening_reminder),
                 updated_at = ?
             WHERE user_id = ?
-            """,
-            (
-                int(enabled),
-                morning_time,
-                evening_time,
-                utc_now(),
-                user_id,
-            ),
-        )
+        """, (
+            int(enabled),
+            morning,
+            evening,
+            utc_now(),
+            user_id,
+        ))
 
 
 # =========================================================
 # TASBEH
 # =========================================================
 
-def increment_tasbeh(
-    user_id: int,
-    amount: int = 1,
-) -> dict[str, int]:
-    """Tasbeh hisoblagichini oshiradi."""
+def get_tasbeh(user_id: int) -> dict[str, Any]:
 
-    _validate_user_id(user_id)
-
-    if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
-        raise ValueError("Miqdor musbat butun son bo‘lishi kerak.")
-
-    now = utc_now()
+    today = local_today()
 
     with get_connection() as con:
+
         _ensure_user(con, user_id)
-        _ensure_user_settings(con, user_id)
 
-        profile = con.execute(
-            """
-            SELECT timezone
-            FROM user_settings
-            WHERE user_id = ?
-            """,
-            (user_id,),
-        ).fetchone()
-
-        timezone_name = (
-            profile["timezone"] if profile else settings.timezone
-        )
-
-        today = local_today(timezone_name)
-
-        row = con.execute(
-            """
-            SELECT total_count, daily_count, last_date
-            FROM tasbeh
-            WHERE user_id = ?
-            """,
-            (user_id,),
-        ).fetchone()
-
-        if row is None:
-            total = 0
-            daily = 0
-
-            con.execute(
-                """
-                INSERT INTO tasbeh (
-                    user_id,
-                    updated_at
-                )
-                VALUES (?, ?)
-                """,
-                (user_id, now),
-            )
-        else:
-            total = row["total_count"]
-            daily = (
-                row["daily_count"]
-                if row["last_date"] == today
-                else 0
-            )
-
-        total += amount
-        daily += amount
-
-        con.execute(
-            """
-            UPDATE tasbeh
-            SET total_count = ?,
-                daily_count = ?,
-                last_date = ?,
-                updated_at = ?
-            WHERE user_id = ?
-            """,
-            (
-                total,
-                daily,
-                today,
-                now,
-                user_id,
-            ),
-        )
-
-    return {
-        "total": total,
-        "daily": daily,
-    }
-
-
-def reset_daily_tasbeh(user_id: int) -> None:
-    """Kunlik tasbeh hisoblagichini nolga tushiradi."""
-
-    _validate_user_id(user_id)
-
-    with get_connection() as con:
-        _ensure_user(con, user_id)
-        _ensure_user_settings(con, user_id)
-
-        profile = con.execute(
-            """
-            SELECT timezone
-            FROM user_settings
-            WHERE user_id = ?
-            """,
-            (user_id,),
-        ).fetchone()
-
-        timezone_name = (
-            profile["timezone"] if profile else settings.timezone
-        )
-
-        today = local_today(timezone_name)
-
-        con.execute(
-            """
+        con.execute("""
             INSERT OR IGNORE INTO tasbeh (
                 user_id,
                 updated_at
             )
             VALUES (?, ?)
-            """,
-            (user_id, utc_now()),
-        )
+        """, (user_id, utc_now()))
 
-        con.execute(
-            """
+        row = con.execute("""
+            SELECT *
+            FROM tasbeh
+            WHERE user_id = ?
+        """, (user_id,)).fetchone()
+
+        if row["last_date"] != today:
+            con.execute("""
+                UPDATE tasbeh
+                SET daily_count = 0,
+                    last_date = ?,
+                    updated_at = ?
+                WHERE user_id = ?
+            """, (today, utc_now(), user_id))
+
+            row = con.execute("""
+                SELECT *
+                FROM tasbeh
+                WHERE user_id = ?
+            """, (user_id,)).fetchone()
+
+        return dict(row)
+
+
+def add_tasbeh(
+    user_id: int,
+    zikr: str = "Subhanalloh",
+    count: int = 1,
+) -> dict[str, Any]:
+
+    if count < 1 or count > 1000:
+        raise ValueError("Tasbeh soni noto‘g‘ri.")
+
+    today = local_today()
+    now = utc_now()
+
+    with get_connection() as con:
+
+        _ensure_user(con, user_id)
+
+        con.execute("""
+            INSERT OR IGNORE INTO tasbeh (
+                user_id,
+                last_date,
+                updated_at
+            )
+            VALUES (?, ?, ?)
+        """, (user_id, today, now))
+
+        con.execute("""
+            UPDATE tasbeh
+            SET
+                daily_count = CASE
+                    WHEN last_date = ? THEN daily_count + ?
+                    ELSE ?
+                END,
+                total_count = total_count + ?,
+                last_date = ?,
+                current_zikr = ?,
+                updated_at = ?
+            WHERE user_id = ?
+        """, (
+            today,
+            count,
+            count,
+            count,
+            today,
+            zikr,
+            now,
+            user_id,
+        ))
+
+        con.execute("""
+            INSERT INTO tasbeh_history (
+                user_id,
+                zikr,
+                count,
+                created_at
+            )
+            VALUES (?, ?, ?, ?)
+        """, (user_id, zikr, count, now))
+
+    return get_tasbeh(user_id)
+
+
+def reset_daily_tasbeh(user_id: int) -> None:
+
+    with get_connection() as con:
+
+        _ensure_user(con, user_id)
+
+        con.execute("""
+            INSERT OR IGNORE INTO tasbeh (
+                user_id,
+                updated_at
+            )
+            VALUES (?, ?)
+        """, (user_id, utc_now()))
+
+        con.execute("""
             UPDATE tasbeh
             SET daily_count = 0,
                 last_date = ?,
                 updated_at = ?
             WHERE user_id = ?
-            """,
-            (
-                today,
-                utc_now(),
-                user_id,
-            ),
-        )
+        """, (local_today(), utc_now(), user_id))
 
 
-# =========================================================
-# SIYRAT / VIKTORINA
-# =========================================================
-
-def add_quiz_result(
+def set_current_zikr(
     user_id: int,
-    question_id: str,
-    is_correct: bool,
-    points: int = 20,
-) -> dict[str, int]:
-    """Viktorina natijasi va ballarini saqlaydi."""
-
-    _validate_user_id(user_id)
-
-    if not isinstance(question_id, str) or not question_id.strip():
-        raise ValueError("Savol ID bo‘sh bo‘lmasligi kerak.")
-
-    if len(question_id) > 100:
-        raise ValueError("Savol ID juda uzun.")
-
-    if not isinstance(is_correct, bool):
-        raise ValueError("Javob holati True yoki False bo‘lishi kerak.")
-
-    if isinstance(points, bool) or not isinstance(points, int) or points < 0:
-        raise ValueError("Ball manfiy bo‘lmagan butun son bo‘lishi kerak.")
-
-    awarded_points = points if is_correct else 0
-    now = utc_now()
+    zikr: str,
+) -> None:
 
     with get_connection() as con:
+
+        _ensure_user(con)
+
+        con.execute("""
+            INSERT OR IGNORE INTO tasbeh (
+                user_id,
+                updated_at
+            )
+            VALUES (?, ?)
+        """, (user_id, utc_now()))
+
+        con.execute("""
+            UPDATE tasbeh
+            SET current_zikr = ?,
+                updated_at = ?
+            WHERE user_id = ?
+        """, (zikr, utc_now(), user_id))
+
+
+def get_tasbeh_history(
+    user_id: int,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+
+    limit = max(1, min(int(limit), 100))
+
+    with get_connection() as con:
+
+        rows = con.execute("""
+            SELECT zikr, SUM(count) AS count
+            FROM tasbeh_history
+            WHERE user_id = ?
+            GROUP BY zikr
+            ORDER BY count DESC
+            LIMIT ?
+        """, (user_id, limit)).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+# =========================================================
+# QUIZ / VIKTORINA
+# =========================================================
+
+def get_quiz_stats(user_id: int) -> dict[str, Any]:
+
+    with get_connection() as con:
+
         _ensure_user(con, user_id)
 
-        con.execute(
-            """
+        con.execute("""
             INSERT OR IGNORE INTO quiz_stats (
                 user_id,
                 updated_at
             )
             VALUES (?, ?)
-            """,
-            (user_id, now),
-        )
+        """, (user_id, utc_now()))
 
-        con.execute(
-            """
+        row = con.execute("""
+            SELECT *
+            FROM quiz_stats
+            WHERE user_id = ?
+        """, (user_id,)).fetchone()
+
+        return dict(row)
+
+
+def record_quiz_answer(
+    user_id: int,
+    question: str,
+    selected_answer: str,
+    correct_answer: str,
+    points: int = 20,
+) -> dict[str, Any]:
+
+    if points < 0 or points > 1000:
+        raise ValueError("Viktorina ballari noto‘g‘ri.")
+
+    is_correct = (
+        selected_answer.strip().casefold()
+        == correct_answer.strip().casefold()
+    )
+
+    earned_points = points if is_correct else 0
+    now = utc_now()
+
+    with get_connection() as con:
+
+        _ensure_user(con, user_id)
+
+        con.execute("""
+            INSERT OR IGNORE INTO quiz_stats (
+                user_id,
+                updated_at
+            )
+            VALUES (?, ?)
+        """, (user_id, now))
+
+        con.execute("""
             INSERT INTO quiz_attempts (
                 user_id,
-                question_id,
+                question,
+                selected_answer,
+                correct_answer,
                 is_correct,
                 points,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                question_id.strip(),
-                int(is_correct),
-                awarded_points,
-                now,
-            ),
-        )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            question,
+            selected_answer,
+            correct_answer,
+            int(is_correct),
+            earned_points,
+            now,
+        ))
 
-        con.execute(
-            """
+        con.execute("""
             UPDATE quiz_stats
-            SET total_questions = total_questions + 1,
+            SET
+                total_questions = total_questions + 1,
                 correct_answers = correct_answers + ?,
-                score = score + ?,
+                total_points = total_points + ?,
                 updated_at = ?
             WHERE user_id = ?
-            """,
-            (
-                int(is_correct),
-                awarded_points,
-                now,
-                user_id,
-            ),
-        )
+        """, (
+            int(is_correct),
+            earned_points,
+            now,
+            user_id,
+        ))
 
-        row = con.execute(
-            """
-            SELECT
-                total_questions,
-                correct_answers,
-                score
-            FROM quiz_stats
-            WHERE user_id = ?
-            """,
-            (user_id,),
-        ).fetchone()
-
-    if row is None:
-        raise RuntimeError("Viktorina natijasi topilmadi.")
-
-    return dict(row)
+    return get_quiz_stats(user_id)
 
 
-def get_leaderboard(
+def get_quiz_leaderboard(
     limit: int = 10,
 ) -> list[dict[str, Any]]:
-    """Eng ko‘p ball to‘plagan faol foydalanuvchilar."""
 
-    if isinstance(limit, bool) or not isinstance(limit, int):
-        raise ValueError("Limit butun son bo‘lishi kerak.")
-
-    if not 1 <= limit <= 100:
-        raise ValueError("Limit 1 dan 100 gacha bo‘lishi kerak.")
+    limit = max(1, min(int(limit), 100))
 
     with get_connection() as con:
-        rows = con.execute(
-            """
+
+        rows = con.execute("""
             SELECT
-                u.first_name,
-                q.score,
+                u.user_id,
+                COALESCE(u.first_name, 'Foydalanuvchi') AS name,
+                q.total_points,
                 q.correct_answers,
                 q.total_questions
-
-            FROM quiz_stats AS q
-
-            INNER JOIN users AS u
-                ON u.user_id = q.user_id
-
-            WHERE u.is_active = 1
-
+            FROM quiz_stats q
+            JOIN users u ON u.user_id = q.user_id
             ORDER BY
-                q.score DESC,
-                q.correct_answers DESC,
-                q.total_questions ASC
-
+                q.total_points DESC,
+                q.correct_answers DESC
             LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
+        """, (limit,)).fetchall()
 
-    return [dict(row) for row in rows]
+        return [dict(row) for row in rows]
 
 
 # =========================================================
-# ESLATMALAR NAVBATI
+# REMINDERS
 # =========================================================
 
 def add_reminder(
     user_id: int,
     reminder_type: str,
-    message: str,
     scheduled_at: str,
 ) -> int:
-    """Yangi eslatmani bazaga qo‘shadi."""
 
-    _validate_user_id(user_id)
-
-    if not isinstance(reminder_type, str) or not reminder_type.strip():
-        raise ValueError("Eslatma turi bo‘sh bo‘lmasligi kerak.")
-
-    if not isinstance(message, str) or not message.strip():
-        raise ValueError("Eslatma matni bo‘sh bo‘lmasligi kerak.")
-
-    if len(reminder_type) > 50 or len(message) > 4000:
-        raise ValueError("Eslatma ma'lumotlari juda uzun.")
-
-    scheduled_value = _validate_scheduled_at(scheduled_at)
+    if reminder_type not in {
+        "morning",
+        "evening",
+        "custom",
+    }:
+        raise ValueError("Eslatma turi noto‘g‘ri.")
 
     with get_connection() as con:
+
         _ensure_user(con, user_id)
 
-        cursor = con.execute(
-            """
+        cursor = con.execute("""
             INSERT INTO reminders (
                 user_id,
                 reminder_type,
-                message,
                 scheduled_at,
                 status,
                 created_at
             )
-            VALUES (?, ?, ?, ?, 'pending', ?)
-            """,
-            (
-                user_id,
-                reminder_type.strip(),
-                message.strip(),
-                scheduled_value,
-                utc_now(),
-            ),
-        )
+            VALUES (?, ?, ?, 'pending', ?)
+        """, (
+            user_id,
+            reminder_type,
+            scheduled_at,
+            utc_now(),
+        ))
 
         return int(cursor.lastrowid)
 
 
 def get_pending_reminders(
-    limit: int = 100,
+    before: str | None = None,
+    limit: int = 500,
 ) -> list[dict[str, Any]]:
-    """Yuborilishi kutilayotgan eslatmalarni qaytaradi."""
 
-    if isinstance(limit, bool) or not isinstance(limit, int):
-        raise ValueError("Limit butun son bo‘lishi kerak.")
-
-    if not 1 <= limit <= 1000:
-        raise ValueError("Limit 1 dan 1000 gacha bo‘lishi kerak.")
+    before = before or utc_now()
+    limit = max(1, min(int(limit), 2000))
 
     with get_connection() as con:
-        rows = con.execute(
-            """
-            SELECT
-                r.id,
-                r.user_id,
-                r.reminder_type,
-                r.message,
-                r.scheduled_at
 
-            FROM reminders AS r
-
-            INNER JOIN users AS u
-                ON u.user_id = r.user_id
-
-            INNER JOIN user_settings AS s
-                ON s.user_id = r.user_id
-
-            WHERE r.status = 'pending'
-                AND u.is_active = 1
-                AND s.reminders_enabled = 1
-
-            ORDER BY r.scheduled_at ASC
+        rows = con.execute("""
+            SELECT *
+            FROM reminders
+            WHERE status = 'pending'
+              AND scheduled_at <= ?
+            ORDER BY scheduled_at ASC
             LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
+        """, (before, limit)).fetchall()
 
-    return [dict(row) for row in rows]
+        return [dict(row) for row in rows]
 
 
 def mark_reminder_sent(reminder_id: int) -> None:
-    """Eslatmani yuborilgan deb belgilaydi."""
-
-    if isinstance(reminder_id, bool) or not isinstance(reminder_id, int) or reminder_id <= 0:
-        raise ValueError("Eslatma ID noto‘g‘ri.")
 
     with get_connection() as con:
-        con.execute(
-            """
+
+        con.execute("""
             UPDATE reminders
             SET status = 'sent',
                 sent_at = ?
             WHERE id = ?
-                AND status = 'pending'
-            """,
-            (
-                utc_now(),
-                reminder_id,
-            ),
-        )
+        """, (utc_now(), reminder_id))
 
 
 def mark_reminder_failed(reminder_id: int) -> None:
-    """Xatolik bilan yakunlangan eslatmani belgilaydi."""
-
-    if isinstance(reminder_id, bool) or not isinstance(reminder_id, int) or reminder_id <= 0:
-        raise ValueError("Eslatma ID noto‘g‘ri.")
 
     with get_connection() as con:
-        con.execute(
-            """
+
+        con.execute("""
             UPDATE reminders
             SET status = 'failed'
             WHERE id = ?
-                AND status = 'pending'
-            """,
-            (reminder_id,),
-        )
+        """, (reminder_id,))
+
+
+def get_active_users() -> list[dict[str, Any]]:
+
+    with get_connection() as con:
+
+        rows = con.execute("""
+            SELECT
+                u.user_id,
+                s.city,
+                s.country,
+                s.timezone,
+                s.reminders_enabled,
+                s.morning_reminder,
+                s.evening_reminder
+            FROM users u
+            JOIN user_settings s
+                ON s.user_id = u.user_id
+            WHERE u.is_subscribed = 1
+        """).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+def get_reminder_users() -> list[dict[str, Any]]:
+
+    with get_connection() as con:
+
+        rows = con.execute("""
+            SELECT
+                u.user_id,
+                s.city,
+                s.country,
+                s.timezone,
+                s.morning_reminder,
+                s.evening_reminder
+            FROM users u
+            JOIN user_settings s
+                ON s.user_id = u.user_id
+            WHERE u.is_subscribed = 1
+              AND s.reminders_enabled = 1
+        """).fetchall()
+
+        return [dict(row) for row in rows]
 
 
 # =========================================================
-# FOYDALANUVCHI HOLATI
+# DATABASE HEALTH
 # =========================================================
 
-def deactivate_user(user_id: int) -> None:
-    """Foydalanuvchini faol emas deb belgilaydi."""
-
-    _validate_user_id(user_id)
+def database_health() -> dict[str, Any]:
 
     with get_connection() as con:
-        cursor = con.execute(
-            """
-            UPDATE users
-            SET is_active = 0,
-                updated_at = ?
-            WHERE user_id = ?
-            """,
-            (
-                utc_now(),
-                user_id,
-            ),
-        )
 
-        if cursor.rowcount == 0:
-            raise ValueError("Foydalanuvchi topilmadi.")
+        result = con.execute(
+            "PRAGMA quick_check"
+        ).fetchone()
 
+        user_count = con.execute(
+            "SELECT COUNT(*) FROM users"
+        ).fetchone()[0]
 
-def get_active_user_ids() -> list[int]:
-    """Faol foydalanuvchilarning Telegram IDlarini qaytaradi."""
-
-    with get_connection() as con:
-        rows = con.execute(
-            """
-            SELECT user_id
-            FROM users
-            WHERE is_active = 1
-            ORDER BY user_id
-            """
-        ).fetchall()
-
-    return [
-        int(row["user_id"])
-        for row in rows
-    ]
+        return {
+            "status": result[0],
+            "users": user_count,
+            "database": str(_database_path()),
+        }
