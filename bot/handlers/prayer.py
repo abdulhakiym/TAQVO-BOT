@@ -1,11 +1,10 @@
-
 from __future__ import annotations
 
 import logging
 
+import aiohttp
 from aiogram import F, Router
 from aiogram.types import Message
-import aiohttp
 
 from database import get_user
 from keyboards import location_keyboard, main_keyboard
@@ -26,7 +25,7 @@ async def prayer_times_handler(
     message: Message,
     http_session: aiohttp.ClientSession,
 ) -> None:
-    """Foydalanuvchining shahriga mos namoz vaqtlarini chiqaradi."""
+    """Foydalanuvchining joylashuvi bo‘yicha namoz vaqtlarini ko‘rsatadi."""
 
     user = message.from_user
 
@@ -38,56 +37,67 @@ async def prayer_times_handler(
 
         if not profile:
             await message.answer(
-                "Avval botni ishga tushiring: /start"
+                "Avval /start buyrug‘i orqali botni ishga tushiring."
             )
             return
 
         city = profile.get("city")
         country = profile.get("country")
         timezone_name = profile.get("timezone")
-        method = profile.get("prayer_method")
+        prayer_method = profile.get("prayer_method")
 
         if not city or not country:
             await message.answer(
-                "📍 Namoz vaqtlarini ko‘rsatish uchun "
-                "avval shahringizni tanlang.",
+                "📍 <b>Joylashuvingiz hali saqlanmagan.</b>\n\n"
+                "Namoz vaqtlarini hisoblash uchun shahringizni "
+                "tanlang yoki GPS joylashuvingizni yuboring.",
                 reply_markup=location_keyboard(),
             )
             return
 
-        await message.answer("🕌 Namoz vaqtlari yuklanmoqda...")
+        await message.answer("🕌 Namoz vaqtlari hisoblanmoqda...")
 
-        prayer = await fetch_prayer_times(
+        prayer_times = await fetch_prayer_times(
             session=http_session,
             city=city,
             country=country,
-            method=method,
+            method=prayer_method,
             timezone_name=timezone_name,
         )
 
         await message.answer(
-            format_prayer_message(prayer),
+            format_prayer_message(prayer_times),
             reply_markup=main_keyboard(),
         )
 
     except PrayerServiceError as error:
         logger.warning(
-            "Namoz vaqti xizmati xatoligi: %s",
+            "Namoz vaqtlarini olishda xatolik: %s",
             error,
         )
+
         await message.answer(
-            "Namoz vaqtlarini hozircha olib bo‘lmadi.\n"
+            "⚠️ Namoz vaqtlarini hozircha olish imkoni bo‘lmadi.\n\n"
             "Iltimos, birozdan keyin qayta urinib ko‘ring.",
+            reply_markup=main_keyboard(),
+        )
+
+    except (aiohttp.ClientError, TimeoutError):
+        logger.exception("Namoz API bilan aloqa xatoligi.")
+
+        await message.answer(
+            "🌐 Internet yoki server bilan aloqa uzildi.\n"
+            "Iltimos, keyinroq qayta urinib ko‘ring.",
             reply_markup=main_keyboard(),
         )
 
     except Exception:
         logger.exception(
-            "Namoz vaqtlarini chiqarishda xatolik. User ID: %s",
-            user.id,
+            "Namoz vaqtlarini ko‘rsatishda kutilmagan xatolik."
         )
+
         await message.answer(
-            "Texnik xatolik yuz berdi. "
+            "❌ Kutilmagan xatolik yuz berdi.\n"
             "Iltimos, keyinroq qayta urinib ko‘ring.",
             reply_markup=main_keyboard(),
         )
