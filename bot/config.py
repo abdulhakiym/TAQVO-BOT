@@ -7,6 +7,7 @@ Faqat standart Python kutubxonalari.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -14,7 +15,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 def _env(name: str, default: str = "") -> str:
-    return os.getenv(name, default).strip()
+    """Environment qiymatini xavfsiz o‘qiydi."""
+    return os.getenv(name, default).strip() or default
 
 
 def _env_alias(
@@ -22,8 +24,12 @@ def _env_alias(
     secondary: str,
     default: str,
 ) -> str:
-    """Eski va yangi environment nomlarini qo‘llab-quvvatlaydi."""
-    return _env(primary) or _env(secondary) or default
+    """Yangi va eski environment nomlarini qo‘llab-quvvatlaydi."""
+    return (
+        os.getenv(primary, "").strip()
+        or os.getenv(secondary, "").strip()
+        or default
+    )
 
 
 def _int_env(
@@ -44,7 +50,8 @@ def _int_env(
 
     if not minimum <= value <= maximum:
         raise ValueError(
-            f"{name} qiymati {minimum} va {maximum} oralig‘ida bo‘lishi kerak."
+            f"{name} qiymati {minimum} va {maximum} "
+            "oralig‘ida bo‘lishi kerak."
         )
 
     return value
@@ -77,29 +84,56 @@ def _admin_ids() -> tuple[int, ...]:
     return ids
 
 
-def _validate_url(name: str, value: str) -> None:
+def _validate_url(name: str, value: str) -> str:
     """HTTPS URL formatini tekshiradi."""
-    if not value:
-        raise ValueError(f"{name} bo‘sh bo‘lmasligi kerak.")
-
     parsed = urlparse(value)
 
-    if parsed.scheme != "https" or not parsed.netloc:
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or any(char.isspace() for char in value)
+    ):
         raise ValueError(
             f"{name} to‘g‘ri HTTPS manzil bo‘lishi kerak."
         )
 
+    return value
+
+
+def _validate_channel_username(value: str) -> str:
+    """Telegram kanal username yoki ID formatini tekshiradi."""
+
+    if value.startswith("@"):
+        username = value[1:]
+
+        if not re.fullmatch(r"[A-Za-z0-9_]{5,32}", username):
+            raise ValueError(
+                "CHANNEL_USERNAME noto‘g‘ri. "
+                "Masalan: @hakiymqalb"
+            )
+
+        return value
+
+    if re.fullmatch(r"-100\d+", value):
+        return value
+
+    raise ValueError(
+        "CHANNEL_USERNAME @kanal_nomi yoki -100... "
+        "formatida bo‘lishi kerak."
+    )
+
 
 def _validate_clock(name: str, value: str) -> str:
     """HH:MM formatidagi vaqtni tekshiradi."""
-    try:
-        hour_text, minute_text = value.split(":")
-        hour = int(hour_text)
-        minute = int(minute_text)
-    except (ValueError, TypeError):
+
+    if not re.fullmatch(r"\d{1,2}:\d{2}", value):
         raise ValueError(
             f"{name} HH:MM formatida bo‘lishi kerak."
         )
+
+    hour_text, minute_text = value.split(":")
+    hour = int(hour_text)
+    minute = int(minute_text)
 
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
         raise ValueError(
@@ -111,12 +145,16 @@ def _validate_clock(name: str, value: str) -> str:
 
 def _validate_timezone(value: str) -> str:
     """IANA vaqt zonasini tekshiradi."""
+
+    if not value:
+        raise ValueError("TIMEZONE bo‘sh bo‘lmasligi kerak.")
+
     try:
         ZoneInfo(value)
-    except (ZoneInfoNotFoundError, ValueError):
+    except (ZoneInfoNotFoundError, ValueError) as exc:
         raise ValueError(
-            f"TIMEZONE noto‘g‘ri: {value!r}"
-        )
+            f"TIMEZONE noto‘g‘ri yoki tizimda mavjud emas: {value!r}"
+        ) from exc
 
     return value
 
@@ -159,29 +197,29 @@ class Settings:
             )
         ).expanduser()
 
-        channel_username = _env(
-            "CHANNEL_USERNAME",
-            "@hakiymqalb",
-        )
-
-        if not channel_username.startswith("@") and not channel_username.startswith("-100"):
-            raise ValueError(
-                "CHANNEL_USERNAME @kanal_nomi yoki -100... formatida bo‘lishi kerak."
+        channel_username = _validate_channel_username(
+            _env(
+                "CHANNEL_USERNAME",
+                "@hakiymqalb",
             )
+        )
 
-        channel_url = _env(
+        channel_url = _validate_url(
             "CHANNEL_URL",
-            "https://t.me/hakiymqalb",
+            _env(
+                "CHANNEL_URL",
+                "https://t.me/hakiymqalb",
+            ),
         )
 
-        mini_app_url = _env_alias(
+        mini_app_url = _validate_url(
             "SITE_URL",
-            "MINI_APP_URL",
-            "https://abdulhakiym.github.io/TAQVO-BOT/",
+            _env_alias(
+                "SITE_URL",
+                "MINI_APP_URL",
+                "https://abdulhakiym.github.io/TAQVO-BOT/",
+            ),
         )
-
-        _validate_url("CHANNEL_URL", channel_url)
-        _validate_url("SITE_URL", mini_app_url)
 
         log_level = _env(
             "LOG_LEVEL",
@@ -197,16 +235,26 @@ class Settings:
         }
 
         if log_level not in allowed_log_levels:
-            raise ValueError("LOG_LEVEL noto‘g‘ri.")
+            raise ValueError(
+                f"LOG_LEVEL noto‘g‘ri: {log_level!r}"
+            )
 
         morning = _validate_clock(
             "REMINDER_MORNING",
-            _env("REMINDER_MORNING", "08:00"),
+            _env_alias(
+                "REMINDER_MORNING",
+                "MORNING_REMINDER",
+                "08:00",
+            ),
         )
 
         evening = _validate_clock(
             "REMINDER_EVENING",
-            _env("REMINDER_EVENING", "20:00"),
+            _env_alias(
+                "REMINDER_EVENING",
+                "EVENING_REMINDER",
+                "20:00",
+            ),
         )
 
         timezone_name = _validate_timezone(
@@ -285,7 +333,7 @@ class Settings:
                 "BotFather tokenini kiriting."
             )
 
-        if ":" not in self.bot_token:
+        if not re.fullmatch(r"\d+:[A-Za-z0-9_-]+", self.bot_token):
             raise RuntimeError(
                 "BOT_TOKEN formati noto‘g‘ri. "
                 "BotFather tokenini tekshiring."
