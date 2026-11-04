@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -12,13 +11,12 @@ from aiogram.types import (
     Message,
 )
 
-from config import settings
 from database import (
     get_user,
     set_prayer_method,
     set_reminders,
 )
-from keyboards import location_keyboard, main_keyboard
+from keyboards import location_keyboard
 
 
 logger = logging.getLogger(__name__)
@@ -32,8 +30,8 @@ PRAYER_METHODS = [
     (2, "Islamic Society of North America"),
     (3, "Muslim World League"),
     (4, "Umm Al-Qura University, Makkah"),
-    (5, "Egyptian General Authority"),
-    (7, "Institute of Geophysics, Tehran"),
+    (5, "Egyptian General Authority of Survey"),
+    (7, "Institute of Geophysics, University of Tehran"),
     (8, "Gulf Region"),
     (9, "Kuwait"),
     (10, "Qatar"),
@@ -41,7 +39,7 @@ PRAYER_METHODS = [
     (12, "Union Organization Islamic de France"),
     (13, "Diyanet İşleri Başkanlığı, Turkey"),
     (14, "Spiritual Administration of Muslims of Russia"),
-    (15, "Moonsighting Committee"),
+    (15, "Moonsighting Committee Worldwide"),
     (16, "Dubai"),
     (17, "Jabatan Kemajuan Islam Malaysia"),
     (18, "Tunisia"),
@@ -49,7 +47,7 @@ PRAYER_METHODS = [
     (20, "Kementerian Agama Indonesia"),
     (21, "Morocco"),
     (22, "Comunidade Islamica de Lisboa"),
-    (23, "Jordan"),
+    (23, "Ministry of Awqaf, Jordan"),
 ]
 
 
@@ -91,7 +89,7 @@ def prayer_methods_menu() -> InlineKeyboardMarkup:
 
     buttons.append([
         InlineKeyboardButton(
-            text="⬅️ Sozlamalarga qaytish",
+            text="⬅️ Orqaga",
             callback_data="settings:back",
         )
     ])
@@ -100,36 +98,43 @@ def prayer_methods_menu() -> InlineKeyboardMarkup:
 
 
 def reminders_menu(enabled: bool) -> InlineKeyboardMarkup:
-    if enabled:
-        button_text = "🔕 Eslatmalarni o‘chirish"
-        callback_data = "settings:reminders:off"
-    else:
-        button_text = "🔔 Eslatmalarni yoqish"
-        callback_data = "settings:reminders:on"
+    status = "🟢 Yoqilgan" if enabled else "🔴 O‘chirilgan"
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=button_text,
-                    callback_data=callback_data,
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="⬅️ Sozlamalarga qaytish",
-                    callback_data="settings:back",
-                )
-            ],
-        ]
-    )
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=f"Holati: {status}",
+                callback_data="settings:reminders:status",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="🔔 Eslatmalarni yoqish",
+                callback_data="settings:reminders:on",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="🔕 Eslatmalarni o‘chirish",
+                callback_data="settings:reminders:off",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="⬅️ Orqaga",
+                callback_data="settings:back",
+            )
+        ],
+    ]
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 @router.message(Command("settings"))
 async def settings_command(message: Message) -> None:
     await message.answer(
-        "⚙️ <b>TAQVO PRO MAX — SOZLAMALAR</b>\n\n"
-        "Kerakli bo‘limni tanlang:",
+        "⚙️ <b>TAQVO PRO MAX — Sozlamalar</b>\n\n"
+        "Quyidagi bo‘limlardan birini tanlang:",
         reply_markup=settings_menu(),
     )
 
@@ -153,20 +158,20 @@ async def change_location(callback: CallbackQuery) -> None:
     if isinstance(callback.message, Message):
         await callback.message.answer(
             "📍 <b>Joylashuvni o‘zgartirish</b>\n\n"
-            "GPS orqali joylashuvingizni yuboring "
+            "Yangi joylashuvingizni GPS orqali yuboring "
             "yoki shahar nomini yozing.",
             reply_markup=location_keyboard(),
         )
 
 
 @router.callback_query(F.data == "settings:prayer_method")
-async def choose_prayer_method(callback: CallbackQuery) -> None:
+async def select_prayer_method(callback: CallbackQuery) -> None:
     await callback.answer()
 
     if isinstance(callback.message, Message):
         await callback.message.answer(
-            "🕌 <b>Namoz hisoblash usulini tanlang</b>\n\n"
-            "O‘zingiz foydalanadigan hisoblash usulini tanlang:",
+            "🕌 <b>Namoz hisoblash usuli</b>\n\n"
+            "O‘zingizga mos hisoblash usulini tanlang:",
             reply_markup=prayer_methods_menu(),
         )
 
@@ -176,43 +181,47 @@ async def save_prayer_method(callback: CallbackQuery) -> None:
     user_id = callback.from_user.id
 
     try:
-        method_id = int(callback.data.rsplit(":", 1)[1])
+        method_id = int((callback.data or "").split(":")[-1])
 
-        if not 0 <= method_id <= 23:
-            raise ValueError("Noto‘g‘ri hisoblash usuli")
+        valid_methods = {
+            method_id
+            for method_id, _ in PRAYER_METHODS
+        }
 
-        profile = get_user(user_id)
-
-        if not profile:
+        if method_id not in valid_methods:
             await callback.answer(
-                "Avval /start buyrug‘ini yuboring.",
+                "Noto‘g‘ri hisoblash usuli.",
                 show_alert=True,
             )
             return
 
         set_prayer_method(user_id, method_id)
 
+        selected_name = next(
+            name
+            for method, name in PRAYER_METHODS
+            if method == method_id
+        )
+
         await callback.answer("Hisoblash usuli saqlandi!")
 
         if isinstance(callback.message, Message):
             await callback.message.answer(
                 "✅ <b>Namoz hisoblash usuli saqlandi.</b>\n\n"
-                f"Tanlangan usul raqami: <b>{method_id}</b>\n\n"
-                "Yangi hisoblash usuli keyingi namoz vaqti "
-                "so‘rovida qo‘llanadi.",
-                reply_markup=settings_menu(),
+                f"Tanlangan usul: <b>{selected_name}</b>\n\n"
+                "Yangi usul keyingi namoz vaqtlari hisobida qo‘llanadi."
             )
 
-    except (ValueError, IndexError):
+    except (ValueError, TypeError):
         await callback.answer(
-            "Hisoblash usuli noto‘g‘ri.",
+            "Hisoblash usulini tanlashda xatolik.",
             show_alert=True,
         )
 
     except Exception:
-        logger.exception("Namoz hisoblash usulini saqlashda xatolik.")
+        logger.exception("Namoz usulini saqlashda xatolik.")
         await callback.answer(
-            "Saqlashda xatolik yuz berdi.",
+            "Sozlamani saqlab bo‘lmadi.",
             show_alert=True,
         )
 
@@ -223,7 +232,7 @@ async def show_reminders(callback: CallbackQuery) -> None:
 
     if not profile:
         await callback.answer(
-            "Avval /start buyrug‘ini yuboring.",
+            "Avval /start buyrug‘ini bosing.",
             show_alert=True,
         )
         return
@@ -234,13 +243,35 @@ async def show_reminders(callback: CallbackQuery) -> None:
 
     if isinstance(callback.message, Message):
         await callback.message.answer(
-            "🔔 <b>Kundalik eslatmalar</b>\n\n"
-            "TAQVO BOT sizga har kuni:\n"
-            "🌅 08:00 — Oxiratni eslatuvchi xabar\n"
-            "🌙 20:00 — Kunlik eslatma yuboradi.\n\n"
-            f"Holati: {'🟢 Yoqilgan' if enabled else '🔴 O‘chirilgan'}",
+            "🔔 <b>Kunlik eslatmalar</b>\n\n"
+            "Eslatmalar vaqti:\n"
+            "🌅 Tonggi eslatma — 08:00\n"
+            "🌙 Kechki eslatma — 20:00\n\n"
+            "Vaqtlar sizning saqlangan vaqt mintaqangiz bo‘yicha belgilanadi.\n\n"
+            "Holatni tanlang:",
             reply_markup=reminders_menu(enabled),
         )
+
+
+@router.callback_query(F.data == "settings:reminders:status")
+async def reminder_status(callback: CallbackQuery) -> None:
+    profile = get_user(callback.from_user.id)
+
+    if not profile:
+        await callback.answer(
+            "Foydalanuvchi ma’lumotlari topilmadi.",
+            show_alert=True,
+        )
+        return
+
+    enabled = bool(profile.get("reminders_enabled", True))
+
+    status = "yoqilgan" if enabled else "o‘chirilgan"
+
+    await callback.answer(
+        f"Eslatmalar hozir {status}.",
+        show_alert=True,
+    )
 
 
 @router.callback_query(F.data.in_({
@@ -248,20 +279,10 @@ async def show_reminders(callback: CallbackQuery) -> None:
     "settings:reminders:off",
 }))
 async def toggle_reminders(callback: CallbackQuery) -> None:
-    user_id = callback.from_user.id
-    enabled = callback.data.endswith(":on")
+    enabled = callback.data == "settings:reminders:on"
 
     try:
-        profile = get_user(user_id)
-
-        if not profile:
-            await callback.answer(
-                "Avval /start buyrug‘ini yuboring.",
-                show_alert=True,
-            )
-            return
-
-        set_reminders(user_id, enabled)
+        set_reminders(callback.from_user.id, enabled)
 
         await callback.answer(
             "Eslatmalar yoqildi!" if enabled else "Eslatmalar o‘chirildi!"
@@ -269,14 +290,20 @@ async def toggle_reminders(callback: CallbackQuery) -> None:
 
         if isinstance(callback.message, Message):
             await callback.message.answer(
-                "🔔 <b>Eslatmalar sozlamasi yangilandi.</b>\n\n"
-                f"Holati: {'🟢 Yoqilgan' if enabled else '🔴 O‘chirilgan'}",
-                reply_markup=reminders_menu(enabled),
+                (
+                    "✅ <b>Kunlik eslatmalar yoqildi.</b>\n\n"
+                    "🌅 08:00 — Tonggi eslatma\n"
+                    "🌙 20:00 — Kechki eslatma"
+                )
+                if enabled
+                else
+                "🔕 <b>Kunlik eslatmalar o‘chirildi.</b>\n\n"
+                "Endi sizga rejalashtirilgan eslatmalar yuborilmaydi."
             )
 
     except Exception:
-        logger.exception("Eslatmalarni o‘zgartirishda xatolik.")
+        logger.exception("Eslatmalar sozlamasida xatolik.")
         await callback.answer(
-            "Sozlamani o‘zgartirib bo‘lmadi.",
+            "Sozlamani saqlab bo‘lmadi.",
             show_alert=True,
         )
