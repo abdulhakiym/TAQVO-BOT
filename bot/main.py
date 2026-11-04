@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import asyncio
@@ -24,8 +23,27 @@ from handlers.settings import router as settings_router
 logger = logging.getLogger(__name__)
 
 
+def configure_logging() -> None:
+    """Log yozuvlarini sozlaydi."""
+
+    log_level = getattr(
+        logging,
+        settings.log_level.upper(),
+        logging.INFO,
+    )
+
+    logging.basicConfig(
+        level=log_level,
+        format=(
+            "%(asctime)s | %(levelname)s | "
+            "%(name)s | %(message)s"
+        ),
+    )
+
+
 async def health_check(request: web.Request) -> web.Response:
-    """Render server holatini tekshirish uchun endpoint."""
+    """Render server holatini tekshirish endpointi."""
+
     return web.json_response({
         "status": "ok",
         "service": "TAQVO PRO MAX",
@@ -34,21 +52,28 @@ async def health_check(request: web.Request) -> web.Response:
 
 
 async def start_health_server() -> web.AppRunner:
-    """Render uchun HTTP health serverini ishga tushiradi."""
+    """HTTP health serverini ishga tushiradi."""
+
     app = web.Application()
+
     app.router.add_get("/", health_check)
     app.router.add_get("/health", health_check)
 
     runner = web.AppRunner(app)
     await runner.setup()
 
-    site = web.TCPSite(
-        runner,
-        host="0.0.0.0",
-        port=settings.port,
-    )
+    try:
+        site = web.TCPSite(
+            runner,
+            host="0.0.0.0",
+            port=settings.port,
+        )
 
-    await site.start()
+        await site.start()
+
+    except Exception:
+        await runner.cleanup()
+        raise
 
     logger.info(
         "Health server ishga tushdi. Port: %s",
@@ -58,20 +83,28 @@ async def start_health_server() -> web.AppRunner:
     return runner
 
 
-async def main() -> None:
-    settings.validate_runtime()
+def register_routers(dp: Dispatcher) -> None:
+    """Barcha Telegram handlerlarini ulaydi."""
 
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level),
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
+    dp.include_router(start_router)
+    dp.include_router(subscription_router)
+    dp.include_router(location_router)
+    dp.include_router(prayer_router)
+    dp.include_router(settings_router)
+
+
+async def main() -> None:
+    configure_logging()
 
     logger.info("TAQVO PRO MAX ishga tushmoqda...")
+
+    # Muhit sozlamalarini tekshirish.
+    settings.validate_runtime()
 
     # Ma'lumotlar bazasini tayyorlash.
     init_db()
 
-    # Telegram bot.
+    # Telegram botni yaratish.
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(
@@ -79,32 +112,34 @@ async def main() -> None:
         ),
     )
 
-    # Handlerlar uchun umumiy HTTP sessiya.
-    http_session = aiohttp.ClientSession()
-
     # Dispatcher.
     dp = Dispatcher()
 
-    # Barcha handlerlarni ulash.
-    dp.include_router(start_router)
-    dp.include_router(subscription_router)
-    dp.include_router(location_router)
-    dp.include_router(prayer_router)
-    dp.include_router(settings_router)
+    register_routers(dp)
 
-    health_runner = None
+    health_runner: web.AppRunner | None = None
+
+    # HTTP so'rovlar uchun timeout.
+    timeout = aiohttp.ClientTimeout(
+        total=settings.http_timeout_seconds,
+    )
 
     try:
-        # Render health server.
-        health_runner = await start_health_server()
+        async with aiohttp.ClientSession(
+            timeout=timeout,
+        ) as http_session:
 
-        logger.info("Telegram bot polling boshlandi.")
+            # Handlerlarga umumiy HTTP sessiyani uzatish.
+            health_runner = await start_health_server()
 
-        await dp.start_polling(
-            bot,
-            http_session=http_session,
-            allowed_updates=dp.resolve_used_update_types(),
-        )
+            logger.info("Telegram bot polling boshlandi.")
+
+            await dp.start_polling(
+                bot,
+                http_session=http_session,
+                allowed_updates=dp.resolve_used_update_types(),
+                close_bot_session=False,
+            )
 
     finally:
         logger.info("TAQVO PRO MAX to‘xtatilmoqda...")
@@ -112,7 +147,6 @@ async def main() -> None:
         if health_runner is not None:
             await health_runner.cleanup()
 
-        await http_session.close()
         await bot.session.close()
 
         logger.info("TAQVO PRO MAX to‘xtatildi.")
@@ -121,5 +155,14 @@ async def main() -> None:
 if __name__ == "__main__":
     try:
         asyncio.run(main())
+
     except KeyboardInterrupt:
-        logger.info("Bot foydalanuvchi tomonidan to‘xtatildi.")
+        logging.getLogger(__name__).info(
+            "Bot foydalanuvchi tomonidan to‘xtatildi."
+        )
+
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "TAQVO PRO MAX ishga tushishida jiddiy xatolik."
+        )
+        raise
