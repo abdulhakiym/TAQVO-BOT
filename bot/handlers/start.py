@@ -1,7 +1,7 @@
-
 from __future__ import annotations
 
 import logging
+from html import escape
 
 from aiogram import Bot, Router
 from aiogram.filters import CommandStart
@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 router = Router(name="start")
 
 
+WELCOME_TEXT = (
+    "Assalomu alaykum va rohmatullohi va barokatuh!\n\n"
+    "🕌 <b>TAQVO PRO MAX</b> xizmatiga xush kelibsiz.\n\n"
+)
+
+
 async def show_start_screen(
     message: Message,
     bot: Bot,
@@ -28,12 +34,13 @@ async def show_start_screen(
     is_subscribed = await check_subscription(bot, user_id)
 
     if not is_subscribed:
+        set_subscription(user_id, False)
+
         await message.answer(
-            "Assalomu alaykum!\n\n"
-            "🕌 <b>TAQVO PRO MAX</b> loyihasiga xush kelibsiz.\n\n"
-            "Botdan foydalanish uchun avval "
-            "rasmiy Telegram kanalimizga obuna bo‘ling:\n"
-            f"📢 {settings.channel_username}\n\n"
+            WELCOME_TEXT
+            + "Botning barcha imkoniyatlaridan foydalanish uchun "
+            "rasmiy Telegram kanalimizga obuna bo‘ling:\n\n"
+            f"📢 <b>{escape(settings.channel_username)}</b>\n\n"
             "Obuna bo‘lganingizdan keyin "
             "«Obunani tekshirish» tugmasini bosing.",
             reply_markup=subscription_keyboard(settings.channel_url),
@@ -43,12 +50,11 @@ async def show_start_screen(
     set_subscription(user_id, True)
 
     await message.answer(
-        "Assalomu alaykum va rohmatullohi va barokatuh!\n\n"
-        "🕌 <b>TAQVO PRO MAX</b> xizmatiga xush kelibsiz.\n\n"
-        "Namoz vaqtlarini to‘g‘ri hisoblash uchun "
+        WELCOME_TEXT
+        + "Namoz vaqtlarini to‘g‘ri hisoblash uchun "
         "avval joylashuvingizni tanlang.\n\n"
-        "📍 Joylashuvingizni yuboring yoki "
-        "shaharni qo‘lda tanlashni boshlang.",
+        "📍 GPS orqali joylashuvingizni yuboring "
+        "yoki shahar nomini yozing.",
         reply_markup=location_keyboard(),
     )
 
@@ -84,6 +90,6 @@ async def start_handler(
         )
 
         await message.answer(
-            "Hozircha xizmatda texnik xatolik yuz berdi. "
+            "⚠️ Hozircha xizmatda texnik xatolik yuz berdi.\n\n"
             "Iltimos, birozdan keyin /start buyrug‘ini qayta yuboring."
         )
