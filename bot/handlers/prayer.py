@@ -3,16 +3,22 @@ from __future__ import annotations
 import logging
 
 import aiohttp
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.types import Message
 
-from database import get_user
-from keyboards import location_keyboard, main_keyboard
+from config import settings
+from database import get_user, set_subscription
+from keyboards import (
+    location_keyboard,
+    main_keyboard,
+    subscription_keyboard,
+)
 from services.prayer_service import (
     PrayerServiceError,
     fetch_prayer_times,
     format_prayer_message,
 )
+from services.subscription_service import check_subscription
 
 
 logger = logging.getLogger(__name__)
@@ -23,9 +29,10 @@ router = Router(name="prayer")
 @router.message(F.text == "🕌 Namoz vaqtlarim")
 async def prayer_times_handler(
     message: Message,
+    bot: Bot,
     http_session: aiohttp.ClientSession,
 ) -> None:
-    """Foydalanuvchining joylashuvi bo‘yicha namoz vaqtlarini ko‘rsatadi."""
+    """Obunani tekshiradi va namoz vaqtlarini ko‘rsatadi."""
 
     user = message.from_user
 
@@ -40,6 +47,25 @@ async def prayer_times_handler(
                 "Avval /start buyrug‘i orqali botni ishga tushiring."
             )
             return
+
+        # Kanal obunasini qayta tekshirish.
+        is_subscribed = await check_subscription(
+            bot=bot,
+            user_id=user.id,
+        )
+
+        if not is_subscribed:
+            set_subscription(user.id, False)
+
+            await message.answer(
+                "🔒 <b>Botdan foydalanish uchun kanalga obuna bo‘ling.</b>\n\n"
+                f"📢 {settings.channel_username}\n\n"
+                "Obuna bo‘lgach, «Obunani tekshirish» tugmasini bosing.",
+                reply_markup=subscription_keyboard(settings.channel_url),
+            )
+            return
+
+        set_subscription(user.id, True)
 
         city = profile.get("city")
         country = profile.get("country")
