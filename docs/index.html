@@ -17,12 +17,10 @@
           rel="stylesheet">
 
     <link rel="stylesheet" href="./css/style.css">
-
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 
 <body>
-
 <div class="app-shell" id="app">
 
     <!-- HEADER -->
@@ -36,10 +34,14 @@
         </div>
 
         <div class="header-actions">
-            <button class="icon-button" data-action="notifications"
+            <button class="icon-button"
+                    data-action="notifications"
+                    data-i18n-aria="notificationsLabel"
                     aria-label="Bildirishnomalar">♧</button>
 
-            <select id="languageSelect" aria-label="Tilni tanlash">
+            <select id="languageSelect"
+                    data-i18n-aria="languageLabel"
+                    aria-label="Tilni tanlash">
                 <option value="uz">UZ</option>
                 <option value="uz-Cyrl">ЎЗ</option>
                 <option value="ru">RU</option>
@@ -59,8 +61,14 @@
         </div>
 
         <div class="date-info">
-            <div id="hijriDate">Hijriy sana</div>
-            <div id="gregorianDate">Milodiy sana</div>
+            <div>
+                <span data-i18n="hijriLabel">Hijriy sana</span>
+                <span id="hijriDate">--</span>
+            </div>
+            <div>
+                <span data-i18n="gregorianLabel">Milodiy sana</span>
+                <span id="gregorianDate">--</span>
+            </div>
         </div>
     </section>
 
@@ -72,12 +80,12 @@
                 <h2 data-i18n="prayerTitle">Namoz vaqtlari</h2>
             </div>
 
-            <button class="small-link" data-action="prayer-settings"
+            <button class="small-link"
+                    data-action="prayer-settings"
                     data-i18n="prayerSettings">Sozlash ⚙</button>
         </div>
 
         <div class="prayer-times" id="prayerTimes">
-
             <div class="prayer-item" data-prayer="fajr">
                 <span class="prayer-icon">🌅</span>
                 <span data-i18n="fajr">Bomdod</span>
@@ -107,13 +115,11 @@
                 <span data-i18n="isha">Xufton</span>
                 <strong>--:--</strong>
             </div>
-
         </div>
 
         <div class="next-prayer-panel">
             <div>
-                <span class="next-prayer-label"
-                      data-i18n="nextPrayer">KEYINGI NAMOZ</span>
+                <span class="next-prayer-label" data-i18n="nextPrayer">KEYINGI NAMOZ</span>
                 <strong id="nextPrayerName">--</strong>
             </div>
             <div class="countdown" id="nextPrayerCountdown">--:--:--</div>
@@ -122,7 +128,6 @@
 
     <!-- PERSONAL DASHBOARD -->
     <section class="dashboard-section">
-
         <div class="section-heading">
             <div>
                 <p class="eyebrow" data-i18n="personalLabel">SIZNING IBODATINGIZ</p>
@@ -131,7 +136,6 @@
         </div>
 
         <div class="dashboard-grid">
-
             <button class="dashboard-card" data-action="my-quran">
                 <span class="dashboard-icon">📖</span>
                 <strong data-i18n="myQuran">Qur'onim</strong>
@@ -179,7 +183,6 @@
                 <strong data-i18n="myReminders">Eslatmalarim</strong>
                 <small data-i18n="personalNotifications">Shaxsiy bildirishnomalar</small>
             </button>
-
         </div>
     </section>
 
@@ -203,7 +206,7 @@
                 Bas, Meni eslanglar, Men ham sizlarni eslayman.
             </p>
 
-            <small>Al-Baqara, 152-oyat</small>
+            <small data-i18n="ayahSource">Al-Baqara, 152-oyat</small>
 
             <button class="daily-action" data-action="daily-ayah">
                 <span data-i18n="readMore">Batafsil o‘qish</span> →
@@ -221,15 +224,15 @@
                     Oxirgi o‘qigan sahifangizga qayting.
                 </p>
             </div>
-            <button class="continue-button" data-action="continue-quran">
-                →
-            </button>
+            <button class="continue-button"
+                    data-action="continue-quran"
+                    data-i18n-aria="continueQuran"
+                    aria-label="Qur'on tilovatini davom ettiring">→</button>
         </div>
     </section>
 
     <!-- MAIN MODULES -->
     <section class="modules-section" id="mainModules">
-
         <div class="section-heading">
             <div>
                 <p class="eyebrow" data-i18n="mainLabel">BARCHA XIZMATLAR</p>
@@ -238,24 +241,17 @@
             <span class="module-count">16</span>
         </div>
 
-        <!-- QURAN: LARGEST FIRST CARD -->
-        <button class="quran-feature-card module-button"
-                data-action="quran">
+        <button class="quran-feature-card module-button" data-action="quran">
             <div class="quran-feature-content">
-                <span class="feature-label">01 · QUR'ONI KARIM</span>
+                <span class="feature-label" data-i18n="quranFeatureLabel">01 · QUR'ONI KARIM</span>
                 <h3 data-i18n="quranTitle">Qur'oni Karim</h3>
-                <p data-i18n="quranDescription">
-                    114 sura · 30 juz · 604 sahifa
-                </p>
-                <span class="feature-open" data-i18n="openQuran">
-                    Mushafni ochish →
-                </span>
+                <p data-i18n="quranDescription">114 sura · 30 juz · 604 sahifa</p>
+                <span class="feature-open" data-i18n="openQuran">Mushafni ochish →</span>
             </div>
             <div class="quran-decoration" aria-hidden="true">۞</div>
         </button>
 
         <div class="modules-grid">
-
             <button class="module-card" data-action="prayer-qibla">
                 <span class="module-number">02</span>
                 <span class="module-icon">🕌</span>
@@ -289,13 +285,13 @@
             <button class="module-card" data-action="quiz">
                 <span class="module-number">07</span>
                 <span class="module-icon">🧠</span>
-                <strong>TAQVO QUIZ</strong>
+                <strong data-i18n="quizTitle">TAQVO QUIZ</strong>
             </button>
 
             <button class="module-card" data-action="taqvo-ai">
                 <span class="module-number">08</span>
                 <span class="module-icon">✨</span>
-                <strong>TAQVO AI</strong>
+                <strong data-i18n="aiTitle">TAQVO AI</strong>
             </button>
 
             <button class="module-card" data-action="ibadah">
@@ -345,13 +341,11 @@
                 <span class="module-icon">🎧</span>
                 <strong data-i18n="media">Islomiy media va kutubxona</strong>
             </button>
-
         </div>
     </section>
 
     <!-- EXTRA MODULES -->
     <section class="extras-section" id="extraModules">
-
         <div class="section-heading">
             <div>
                 <p class="eyebrow" data-i18n="extrasLabel">QO‘SHIMCHA IMKONIYATLAR</p>
@@ -361,15 +355,14 @@
         </div>
 
         <div class="extras-grid">
-
             <button class="extra-card" data-action="taqvo-daily">
                 <span>☀️</span>
-                <strong>TAQVO DAILY</strong>
+                <strong data-i18n="taqvoDaily">TAQVO DAILY</strong>
             </button>
 
             <button class="extra-card" data-action="hifz">
                 <span>📖</span>
-                <strong>HIFZ</strong>
+                <strong data-i18n="hifz">HIFZ</strong>
             </button>
 
             <button class="extra-card" data-action="hijri-calendar">
@@ -384,12 +377,12 @@
 
             <button class="extra-card" data-action="muhasaba-plus">
                 <span>📊</span>
-                <strong>MUHOSABA PLUS</strong>
+                <strong data-i18n="muhasabaPlus">MUHOSABA PLUS</strong>
             </button>
 
             <button class="extra-card" data-action="audio">
                 <span>🎙️</span>
-                <strong>TAQVO AUDIO</strong>
+                <strong data-i18n="taqvoAudio">TAQVO AUDIO</strong>
             </button>
 
             <button class="extra-card" data-action="arabic">
@@ -399,7 +392,7 @@
 
             <button class="extra-card" data-action="ilm-majlisi">
                 <span>🎓</span>
-                <strong>ILM MAJLISI</strong>
+                <strong data-i18n="ilmMajlisi">ILM MAJLISI</strong>
             </button>
 
             <button class="extra-card" data-action="fasting">
@@ -416,7 +409,6 @@
                 <span>🗺️</span>
                 <strong data-i18n="ziyarat">Ziyorat yo‘riqnomasi</strong>
             </button>
-
         </div>
     </section>
 
@@ -424,9 +416,7 @@
     <footer class="app-footer">
         <div class="footer-symbol">۞</div>
         <h3>TAQVO PRO MAX</h3>
-        <p data-i18n="footerText">
-            Ilm, ibodat va go‘zal hayot sari.
-        </p>
+        <p data-i18n="footerText">Ilm, ibodat va go‘zal hayot sari.</p>
         <small>© TAQVO PRO MAX</small>
     </footer>
 
@@ -449,7 +439,7 @@
 
         <button class="nav-item" data-action="taqvo-ai">
             <span>✨</span>
-            <small>TAQVO AI</small>
+            <small data-i18n="aiTitle">TAQVO AI</small>
         </button>
 
         <button class="nav-item" data-action="profile">
@@ -457,10 +447,8 @@
             <small data-i18n="profile">Profil</small>
         </button>
     </nav>
-
 </div>
 
 <script src="./js/app.js"></script>
-
 </body>
 </html>
