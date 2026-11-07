@@ -1,4 +1,3 @@
-
 ""Shared SQLAlchemy models for TAQVO."""
 
 from datetime import datetime
@@ -62,7 +61,7 @@ class User(TimestampMixin, Base):
     )
 
     language: Mapped[str] = mapped_column(
-        String(5),
+        String(10),
         default="uz",
         nullable=False,
     )
