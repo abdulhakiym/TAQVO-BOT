@@ -1,86 +1,466 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#050507">
-<title>TAQVO PRO MAX</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-</head>
-<body>
-<div id="app">
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 
-  <section id="home" class="page active">
-    <header class="top">
-      <div>
-        <p class="hello" id="hello">Assalomu alaykum</p>
-        <h1 class="brand">TAQVO <span>PRO MAX</span></h1>
-      </div>
-      <button class="city-btn" id="cityBtn" aria-label="Shaharni tanlash">
-        <span id="cityName">Toshkent</span>
-      </button>
+    <meta name="theme-color" content="#050507">
+    <meta name="description"
+          content="TAQVO PRO MAX — Qur'on, namoz, zikr, ilm va ibodat uchun yagona platforma.">
+
+    <title>TAQVO PRO MAX</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap"
+          rel="stylesheet">
+
+    <link rel="stylesheet" href="./css/style.css">
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+
+<body>
+
+<div class="app-shell" id="app">
+
+    <!-- HEADER -->
+    <header class="top-header">
+        <div class="brand">
+            <div class="brand-symbol">ت</div>
+            <div class="brand-info">
+                <h1>TAQVO <span>PRO MAX</span></h1>
+                <p data-i18n="brandSubtitle">Qalbga nur, hayotga hidoyat</p>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-button" data-action="notifications"
+                    aria-label="Bildirishnomalar">♧</button>
+
+            <select id="languageSelect" aria-label="Tilni tanlash">
+                <option value="uz">UZ</option>
+                <option value="uz-Cyrl">ЎЗ</option>
+                <option value="ru">RU</option>
+            </select>
+        </div>
     </header>
 
-    <div class="hero" id="hero">
-      <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
-        <g fill="none" stroke="currentColor" stroke-width=".6">
-          <rect x="20" y="20" width="60" height="60"/>
-          <rect x="20" y="20" width="60" height="60" transform="rotate(45 50 50)"/>
-          <circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="14"/>
-        </g>
-      </svg>
-      <p class="hero-label">Keyingi namoz</p>
-      <p class="hero-prayer" id="nextName">…</p>
-      <p class="hero-time" id="countdown">--:--:--</p>
-      <p class="hero-at" id="nextAt"></p>
-    </div>
+    <!-- LOCATION AND DATE -->
+    <section class="location-panel">
+        <div>
+            <p class="eyebrow" data-i18n="locationLabel">SIZNING MANZILINGIZ</p>
+            <button class="location-button" data-action="select-city">
+                <span>📍</span>
+                <span id="userLocation" data-i18n="selectCity">Shaharni tanlang</span>
+                <span>⌄</span>
+            </button>
+        </div>
 
-    <div class="prayers" id="prayers" aria-live="polite"></div>
-    <p class="note" id="prayerNote"></p>
+        <div class="date-info">
+            <div id="hijriDate">Hijriy sana</div>
+            <div id="gregorianDate">Milodiy sana</div>
+        </div>
+    </section>
 
-    <div class="zikr-row">
-      <button class="zikr" data-open="morning">Tonggi zikr</button>
-      <button class="zikr" data-open="evening">Kechki zikr</button>
-    </div>
+    <!-- PRAYER TIMES -->
+    <section class="prayer-section">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow" data-i18n="prayerLabel">IBODAT VAQTLARI</p>
+                <h2 data-i18n="prayerTitle">Namoz vaqtlari</h2>
+            </div>
 
-    <h2 class="h2">Bo‘limlar</h2>
-    <div class="grid" id="grid"></div>
+            <button class="small-link" data-action="prayer-settings"
+                    data-i18n="prayerSettings">Sozlash ⚙</button>
+        </div>
 
-    <p class="foot">@hakiymqalb</p>
-  </section>
+        <div class="prayer-times" id="prayerTimes">
 
-  <section id="view" class="page">
-    <button class="back" id="backBtn">Orqaga</button>
-    <h2 class="view-title" id="viewTitle"></h2>
-    <div class="status" id="viewStatus"></div>
-    <div id="viewBody"></div>
-  </section>
+            <div class="prayer-item" data-prayer="fajr">
+                <span class="prayer-icon">🌅</span>
+                <span data-i18n="fajr">Bomdod</span>
+                <strong>--:--</strong>
+            </div>
+
+            <div class="prayer-item" data-prayer="dhuhr">
+                <span class="prayer-icon">☀️</span>
+                <span data-i18n="dhuhr">Peshin</span>
+                <strong>--:--</strong>
+            </div>
+
+            <div class="prayer-item" data-prayer="asr">
+                <span class="prayer-icon">🌤</span>
+                <span data-i18n="asr">Asr</span>
+                <strong>--:--</strong>
+            </div>
+
+            <div class="prayer-item" data-prayer="maghrib">
+                <span class="prayer-icon">🌇</span>
+                <span data-i18n="maghrib">Shom</span>
+                <strong>--:--</strong>
+            </div>
+
+            <div class="prayer-item" data-prayer="isha">
+                <span class="prayer-icon">🌙</span>
+                <span data-i18n="isha">Xufton</span>
+                <strong>--:--</strong>
+            </div>
+
+        </div>
+
+        <div class="next-prayer-panel">
+            <div>
+                <span class="next-prayer-label"
+                      data-i18n="nextPrayer">KEYINGI NAMOZ</span>
+                <strong id="nextPrayerName">--</strong>
+            </div>
+            <div class="countdown" id="nextPrayerCountdown">--:--:--</div>
+        </div>
+    </section>
+
+    <!-- PERSONAL DASHBOARD -->
+    <section class="dashboard-section">
+
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow" data-i18n="personalLabel">SIZNING IBODATINGIZ</p>
+                <h2 data-i18n="personalTitle">Shaxsiy kabinet</h2>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+
+            <button class="dashboard-card" data-action="my-quran">
+                <span class="dashboard-icon">📖</span>
+                <strong data-i18n="myQuran">Qur'onim</strong>
+                <small data-i18n="lastReading">Oxirgi o‘qilgan joy</small>
+            </button>
+
+            <button class="dashboard-card" data-action="my-khatm">
+                <span class="dashboard-icon">📚</span>
+                <strong data-i18n="myKhatm">Xatmim</strong>
+                <small data-i18n="khatmProgress">Xatm jarayoni</small>
+            </button>
+
+            <button class="dashboard-card" data-action="my-tasbeeh">
+                <span class="dashboard-icon">📿</span>
+                <strong data-i18n="myTasbeeh">Tasbehim</strong>
+                <small data-i18n="todayZikr">Bugungi zikrlar</small>
+            </button>
+
+            <button class="dashboard-card" data-action="my-ranking">
+                <span class="dashboard-icon">🏆</span>
+                <strong data-i18n="myRanking">Reytingim</strong>
+                <small data-i18n="myPosition">Mening o‘rnim</small>
+            </button>
+
+            <button class="dashboard-card" data-action="saved">
+                <span class="dashboard-icon">🔖</span>
+                <strong data-i18n="saved">Saqlanganlarim</strong>
+                <small data-i18n="savedContent">Oyat, hadis va duolar</small>
+            </button>
+
+            <button class="dashboard-card" data-action="my-muhasaba">
+                <span class="dashboard-icon">📝</span>
+                <strong data-i18n="myMuhasaba">Muhosabam</strong>
+                <small data-i18n="dailyActions">Kunlik amallar</small>
+            </button>
+
+            <button class="dashboard-card" data-action="my-goals">
+                <span class="dashboard-icon">🎯</span>
+                <strong data-i18n="myGoals">Maqsadlarim</strong>
+                <small data-i18n="hifzGoals">Hifz va ibodat rejalari</small>
+            </button>
+
+            <button class="dashboard-card" data-action="my-reminders">
+                <span class="dashboard-icon">🔔</span>
+                <strong data-i18n="myReminders">Eslatmalarim</strong>
+                <small data-i18n="personalNotifications">Shaxsiy bildirishnomalar</small>
+            </button>
+
+        </div>
+    </section>
+
+    <!-- DAILY CONTENT -->
+    <section class="daily-section">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow" data-i18n="dailyLabel">HAR KUNGI MA'NAVIY OZUQA</p>
+                <h2 data-i18n="dailyTitle">Bugungi eslatma</h2>
+            </div>
+        </div>
+
+        <article class="daily-card">
+            <span class="daily-badge" data-i18n="ayahOfDay">KUN OYATI</span>
+
+            <div class="arabic-text" dir="rtl">
+                فَاذْكُرُونِي أَذْكُرْكُمْ
+            </div>
+
+            <p class="daily-translation" data-i18n="dailyAyahMeaning">
+                Bas, Meni eslanglar, Men ham sizlarni eslayman.
+            </p>
+
+            <small>Al-Baqara, 152-oyat</small>
+
+            <button class="daily-action" data-action="daily-ayah">
+                <span data-i18n="readMore">Batafsil o‘qish</span> →
+            </button>
+        </article>
+    </section>
+
+    <!-- CONTINUE READING -->
+    <section class="continue-section">
+        <div class="continue-card">
+            <div>
+                <span class="eyebrow" data-i18n="continueLabel">DAVOM ETING</span>
+                <h3 data-i18n="continueQuran">Qur'on tilovatini davom ettiring</h3>
+                <p data-i18n="continueDescription">
+                    Oxirgi o‘qigan sahifangizga qayting.
+                </p>
+            </div>
+            <button class="continue-button" data-action="continue-quran">
+                →
+            </button>
+        </div>
+    </section>
+
+    <!-- MAIN MODULES -->
+    <section class="modules-section" id="mainModules">
+
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow" data-i18n="mainLabel">BARCHA XIZMATLAR</p>
+                <h2 data-i18n="mainTitle">Asosiy bo‘limlar</h2>
+            </div>
+            <span class="module-count">16</span>
+        </div>
+
+        <!-- QURAN: LARGEST FIRST CARD -->
+        <button class="quran-feature-card module-button"
+                data-action="quran">
+            <div class="quran-feature-content">
+                <span class="feature-label">01 · QUR'ONI KARIM</span>
+                <h3 data-i18n="quranTitle">Qur'oni Karim</h3>
+                <p data-i18n="quranDescription">
+                    114 sura · 30 juz · 604 sahifa
+                </p>
+                <span class="feature-open" data-i18n="openQuran">
+                    Mushafni ochish →
+                </span>
+            </div>
+            <div class="quran-decoration" aria-hidden="true">۞</div>
+        </button>
+
+        <div class="modules-grid">
+
+            <button class="module-card" data-action="prayer-qibla">
+                <span class="module-number">02</span>
+                <span class="module-icon">🕌</span>
+                <strong data-i18n="prayerQibla">Namoz vaqtlari + Qibla</strong>
+            </button>
+
+            <button class="module-card" data-action="tasbeeh">
+                <span class="module-number">03</span>
+                <span class="module-icon">📿</span>
+                <strong data-i18n="tasbeeh">Elektron tasbeh</strong>
+            </button>
+
+            <button class="module-card" data-action="adhkar">
+                <span class="module-number">04</span>
+                <span class="module-icon">🌅</span>
+                <strong data-i18n="adhkar">Tonggi va kechki zikrlar</strong>
+            </button>
+
+            <button class="module-card" data-action="duas">
+                <span class="module-number">05</span>
+                <span class="module-icon">🤲</span>
+                <strong data-i18n="duas">Duo va munojotlar</strong>
+            </button>
+
+            <button class="module-card" data-action="hadith">
+                <span class="module-number">06</span>
+                <span class="module-icon">📜</span>
+                <strong data-i18n="hadith">Sahih hadislar</strong>
+            </button>
+
+            <button class="module-card" data-action="quiz">
+                <span class="module-number">07</span>
+                <span class="module-icon">🧠</span>
+                <strong>TAQVO QUIZ</strong>
+            </button>
+
+            <button class="module-card" data-action="taqvo-ai">
+                <span class="module-number">08</span>
+                <span class="module-icon">✨</span>
+                <strong>TAQVO AI</strong>
+            </button>
+
+            <button class="module-card" data-action="ibadah">
+                <span class="module-number">09</span>
+                <span class="module-icon">🕋</span>
+                <strong data-i18n="ibadah">Ibodat qo‘llanmasi</strong>
+            </button>
+
+            <button class="module-card" data-action="seerah">
+                <span class="module-number">10</span>
+                <span class="module-icon">🌙</span>
+                <strong data-i18n="seerah">Siyrat va sahobalar</strong>
+            </button>
+
+            <button class="module-card" data-action="fiqh">
+                <span class="module-number">11</span>
+                <span class="module-icon">⚖️</span>
+                <strong data-i18n="fiqh">Fiqh va to‘rt mazhab</strong>
+            </button>
+
+            <button class="module-card" data-action="names">
+                <span class="module-number">12</span>
+                <span class="module-icon">💎</span>
+                <strong data-i18n="names">Allohning 99 go‘zal ismi</strong>
+            </button>
+
+            <button class="module-card" data-action="hajj-umrah">
+                <span class="module-number">13</span>
+                <span class="module-icon">🕋</span>
+                <strong data-i18n="hajjUmrah">Haj, Umra va ziyorat</strong>
+            </button>
+
+            <button class="module-card" data-action="muhasaba">
+                <span class="module-number">14</span>
+                <span class="module-icon">📔</span>
+                <strong data-i18n="muhasaba">Kunlik muhosaba</strong>
+            </button>
+
+            <button class="module-card" data-action="tajweed">
+                <span class="module-number">15</span>
+                <span class="module-icon">🔤</span>
+                <strong data-i18n="tajweed">Qur'on ta'limi va tajvid</strong>
+            </button>
+
+            <button class="module-card" data-action="media">
+                <span class="module-number">16</span>
+                <span class="module-icon">🎧</span>
+                <strong data-i18n="media">Islomiy media va kutubxona</strong>
+            </button>
+
+        </div>
+    </section>
+
+    <!-- EXTRA MODULES -->
+    <section class="extras-section" id="extraModules">
+
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow" data-i18n="extrasLabel">QO‘SHIMCHA IMKONIYATLAR</p>
+                <h2 data-i18n="extrasTitle">TAQVO xizmatlari</h2>
+            </div>
+            <span class="module-count">11</span>
+        </div>
+
+        <div class="extras-grid">
+
+            <button class="extra-card" data-action="taqvo-daily">
+                <span>☀️</span>
+                <strong>TAQVO DAILY</strong>
+            </button>
+
+            <button class="extra-card" data-action="hifz">
+                <span>📖</span>
+                <strong>HIFZ</strong>
+            </button>
+
+            <button class="extra-card" data-action="hijri-calendar">
+                <span>🌙</span>
+                <strong data-i18n="hijriCalendar">Hijriy taqvim</strong>
+            </button>
+
+            <button class="extra-card" data-action="family">
+                <span>👨‍👩‍👧</span>
+                <strong data-i18n="family">Oila va farzandlar</strong>
+            </button>
+
+            <button class="extra-card" data-action="muhasaba-plus">
+                <span>📊</span>
+                <strong>MUHOSABA PLUS</strong>
+            </button>
+
+            <button class="extra-card" data-action="audio">
+                <span>🎙️</span>
+                <strong>TAQVO AUDIO</strong>
+            </button>
+
+            <button class="extra-card" data-action="arabic">
+                <span>🔠</span>
+                <strong data-i18n="arabic">Arab tili</strong>
+            </button>
+
+            <button class="extra-card" data-action="ilm-majlisi">
+                <span>🎓</span>
+                <strong>ILM MAJLISI</strong>
+            </button>
+
+            <button class="extra-card" data-action="fasting">
+                <span>🌙</span>
+                <strong data-i18n="fasting">Ro‘za taqvimi</strong>
+            </button>
+
+            <button class="extra-card" data-action="daily-content">
+                <span>💌</span>
+                <strong data-i18n="dailyContent">Kun oyati va hadisi</strong>
+            </button>
+
+            <button class="extra-card" data-action="ziyarat">
+                <span>🗺️</span>
+                <strong data-i18n="ziyarat">Ziyorat yo‘riqnomasi</strong>
+            </button>
+
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+        <div class="footer-symbol">۞</div>
+        <h3>TAQVO PRO MAX</h3>
+        <p data-i18n="footerText">
+            Ilm, ibodat va go‘zal hayot sari.
+        </p>
+        <small>© TAQVO PRO MAX</small>
+    </footer>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-navigation" aria-label="Asosiy navigatsiya">
+        <button class="nav-item active" data-action="home">
+            <span>⌂</span>
+            <small data-i18n="home">Bosh sahifa</small>
+        </button>
+
+        <button class="nav-item" data-action="quran">
+            <span>📖</span>
+            <small data-i18n="quranNav">Qur'on</small>
+        </button>
+
+        <button class="nav-item" data-action="tasbeeh">
+            <span>📿</span>
+            <small data-i18n="tasbeehNav">Tasbeh</small>
+        </button>
+
+        <button class="nav-item" data-action="taqvo-ai">
+            <span>✨</span>
+            <small>TAQVO AI</small>
+        </button>
+
+        <button class="nav-item" data-action="profile">
+            <span>👤</span>
+            <small data-i18n="profile">Profil</small>
+        </button>
+    </nav>
 
 </div>
 
-<div class="sheet" id="sheet" hidden>
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <h3>Shaharni tanlang</h3>
-      <button class="x" id="sheetClose" aria-label="Yopish">✕</button>
-    </div>
-    <input type="search" id="citySearch" placeholder="Shahar qidirish" autocomplete="off">
-    <ul id="cityList"></ul>
-  </div>
-</div>
+<script src="./js/app.js"></script>
 
-<script src="js/api.js"></script>
-<script src="js/zikr-data.js"></script>
-<script src="js/zikr.js"></script>
-<script src="js/quran.js"></script>
-<script src="js/tasbeh.js"></script>
-<script src="js/library.js"></script>
-<script src="js/knowledge.js"></script>
-<script src="js/quiz.js"></script>
-<script src="js/app.js"></script>
 </body>
 </html>
