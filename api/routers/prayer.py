@@ -1,8 +1,8 @@
-"""Worldwide city search and daily prayer times for TAQVO PRO MAX."""
+"""Worldwide city search and prayer times for TAQVO PRO MAX."""
 
 from datetime import datetime, timezone
 from time import monotonic
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
@@ -20,13 +20,19 @@ ALADHAN_URL = "https://api.aladhan.com/v1"
 REQUEST_TIMEOUT = 15.0
 CACHE_SECONDS = 300
 
-# Short-lived in-memory cache to avoid repeated API requests.
 _prayer_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+
+Madhhab = Literal["hanafi", "maliki", "shafii", "hanbali"]
+
+MADHHAB_NAMES = {
+    "hanafi": "Hanafi",
+    "maliki": "Maliki",
+    "shafii": "Shafi'i",
+    "hanbali": "Hanbali",
+}
 
 
 def _clean_time(value: str | None) -> str | None:
-    """Remove optional timezone text from a returned prayer time."""
-
     if not value:
         return None
 
@@ -39,11 +45,6 @@ async def search_cities(
     count: int = Query(default=10, ge=1, le=20),
     language: str = Query(default="en", min_length=2, max_length=5),
 ) -> dict[str, Any]:
-    """
-    Search cities worldwide.
-
-    Returns city names, country names, coordinates and time zones.
-    """
 
     query = q.strip()
 
@@ -97,18 +98,16 @@ async def search_cities(
         ):
             continue
 
-        cities.append(
-            {
-                "id": item.get("id"),
-                "name": item.get("name"),
-                "country": item.get("country"),
-                "country_code": item.get("country_code"),
-                "region": item.get("admin1"),
-                "latitude": latitude,
-                "longitude": longitude,
-                "timezone": city_timezone,
-            }
-        )
+        cities.append({
+            "id": item.get("id"),
+            "name": item.get("name"),
+            "country": item.get("country"),
+            "country_code": item.get("country_code"),
+            "region": item.get("admin1"),
+            "latitude": latitude,
+            "longitude": longitude,
+            "timezone": city_timezone,
+        })
 
     return {
         "success": True,
@@ -127,12 +126,14 @@ async def get_today_prayer_times(
         max_length=64,
     ),
     method: int = Query(default=3),
-    school: int = Query(default=1, ge=0, le=1),
+    madhhab: Madhhab = Query(default="hanafi"),
+    school: int | None = Query(default=None, ge=0, le=1),
 ) -> dict[str, Any]:
     """
-    Get today's five prayer times for any geographic location.
+    Get today's prayer times for a worldwide location.
 
-    The date is determined using the selected city's local time zone.
+    Hanafi uses the Hanafi Asr calculation.
+    Maliki, Shafi'i and Hanbali use the standard Asr calculation.
     """
 
     if method not in {*range(0, 24), 99}:
@@ -149,12 +150,25 @@ async def get_today_prayer_times(
             detail="Vaqt zonasi noto'g'ri yoki topilmadi.",
         ) from exc
 
+    # AlAdhan supports two Asr calculation schools:
+    # 1 = Hanafi, 0 = standard.
+    # Keep the old 'school' parameter for compatibility.
+    if school is not None:
+        asr_school = school
+        selected_madhhab = (
+            "hanafi" if school == 1 else madhhab
+        )
+    else:
+        selected_madhhab = madhhab
+        asr_school = 1 if madhhab == "hanafi" else 0
+
     local_date = datetime.now(city_timezone).date()
     date_string = local_date.strftime("%d-%m-%Y")
 
     cache_key = (
         f"{latitude:.5f}:{longitude:.5f}:"
-        f"{timezone_name}:{method}:{school}:{date_string}"
+        f"{timezone_name}:{method}:{asr_school}:"
+        f"{selected_madhhab}:{date_string}"
     )
 
     cached = _prayer_cache.get(cache_key)
@@ -168,7 +182,7 @@ async def get_today_prayer_times(
         "latitude": latitude,
         "longitude": longitude,
         "method": method,
-        "school": school,
+        "school": asr_school,
         "timezonestring": timezone_name,
     }
 
@@ -236,8 +250,10 @@ async def get_today_prayer_times(
             "calculation_method": data.get(
                 "meta", {}
             ).get("method", {}),
+            "madhhab": selected_madhhab,
+            "madhhab_name": MADHHAB_NAMES[selected_madhhab],
             "asr_school": (
-                "hanafi" if school == 1 else "shafi"
+                "hanafi" if asr_school == 1 else "standard"
             ),
             "source": "AlAdhan Prayer Times API",
             "updated_at": datetime.now(
