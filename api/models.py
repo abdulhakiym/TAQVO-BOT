@@ -1,4 +1,5 @@
-"""Shared SQLAlchemy models for TAQVO."""
+
+""Shared SQLAlchemy models for TAQVO."""
 
 from datetime import datetime
 
@@ -14,8 +15,6 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
-
-    pass
 
 
 class TimestampMixin:
@@ -53,7 +52,7 @@ class User(TimestampMixin, Base):
     )
 
     username: Mapped[str | None] = mapped_column(
-        String( username := 64),
+        String(64),
         nullable=True,
     )
 
