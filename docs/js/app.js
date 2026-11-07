@@ -1,176 +1,553 @@
-/* TAQVO PRO MAX — 1-qadam: frontend skeleton
-   Ishlaydi: salomlashuv, shahar tanlash, namoz vaqtlari (Aladhan API), hisoblagich, navigatsiya.
-   Hali ulanmagan: Qur'on, zikr, tasbeh va boshqa bo'limlar (2-qadam), obuna tekshiruvi (3-qadam, server tomonida). */
-(() => {
-  const tg = window.Telegram && window.Telegram.WebApp;
-  if (tg) { tg.ready(); tg.expand(); try { tg.setHeaderColor('#050507'); tg.setBackgroundColor('#050507'); } catch (e) {} }
+"use strict";
 
-  const $ = (id) => document.getElementById(id);
-  const store = {
-    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  };
+/* =====================================================
+   TAQVO PRO MAX — APPLICATION CORE
+   Version 1.0
+===================================================== */
 
-  /* ---------- Sozlamalar ---------- */
-  // [davlat (uz), davlat (API), hisoblash usuli, Asr maktabi (1=Hanafiy), shaharlar [uz, API]]
-  const COUNTRIES = [
-    ['O‘zbekiston', 'Uzbekistan', 3, 1, [['Toshkent', 'Tashkent'], ['Samarqand', 'Samarkand'], ['Buxoro', 'Bukhara'], ['Andijon', 'Andijan'], ['Namangan', 'Namangan'], ['Farg‘ona', 'Fergana'], ['Qo‘qon', 'Kokand'], ['Nukus', 'Nukus'], ['Urganch', 'Urgench'], ['Xiva', 'Khiva'], ['Qarshi', 'Karshi'], ['Termiz', 'Termez'], ['Jizzax', 'Jizzakh'], ['Navoiy', 'Navoi'], ['Guliston', 'Gulistan']]],
-    ['Qirg‘iziston', 'Kyrgyzstan', 3, 1, [['Bishkek', 'Bishkek'], ['O‘sh', 'Osh'], ['Jalolobod', 'Jalal-Abad'], ['Qorako‘l', 'Karakol'], ['Norin', 'Naryn'], ['Talas', 'Talas']]],
-    ['Qozog‘iston', 'Kazakhstan', 3, 1, [['Astana', 'Astana'], ['Almati', 'Almaty'], ['Shimkent', 'Shymkent'], ['Turkiston', 'Turkistan'], ['Oqtobe', 'Aktobe']]],
-    ['Tojikiston', 'Tajikistan', 3, 1, [['Dushanbe', 'Dushanbe'], ['Xo‘jand', 'Khujand'], ['Ko‘lob', 'Kulob'], ['Bo‘xtar', 'Bokhtar']]],
-    ['Turkmaniston', 'Turkmenistan', 3, 1, [['Ashxobod', 'Ashgabat'], ['Turkmanobod', 'Turkmenabat'], ['Dashog‘uz', 'Dashoguz']]],
-    ['Rossiya', 'Russia', 14, 1, [['Moskva', 'Moscow'], ['Sankt-Peterburg', 'Saint Petersburg'], ['Qozon', 'Kazan'], ['Ufa', 'Ufa'], ['Grozniy', 'Grozny'], ['Mahachqal‘a', 'Makhachkala'], ['Yekaterinburg', 'Yekaterinburg'], ['Novosibirsk', 'Novosibirsk']]],
-    ['Turkiya', 'Turkey', 13, 1, [['Istanbul', 'Istanbul'], ['Anqara', 'Ankara'], ['Izmir', 'Izmir'], ['Konya', 'Konya']]],
-    ['Saudiya Arabistoni', 'Saudi Arabia', 4, 0, [['Makka', 'Makkah'], ['Madina', 'Medina'], ['Ar-Riyod', 'Riyadh']]],
-    ['Germaniya', 'Germany', 3, 1, [['Berlin', 'Berlin'], ['Kyoln', 'Cologne'], ['Myunxen', 'Munich']]]
-  ];
-  // city = [shahar(uz), shahar(API), davlat(API), davlat(uz), usul, maktab]
-  const CITIES = COUNTRIES.flatMap(k => k[4].map(c => [c[0], c[1], k[1], k[0], k[2], k[3]]));
-  const PRAYERS = [['Fajr', 'Bomdod'], ['Dhuhr', 'Peshin'], ['Asr', 'Asr'], ['Maghrib', 'Shom'], ['Isha', 'Xufton']];
+const TAQVO = (() => {
+    const STORAGE_KEY = "taqvo_language";
 
-  const SECTIONS = [
-    ['quran', '📖', 'Qur’on'], ['prayer', '🕌', 'Namoz vaqtlari'], ['tasbeh', '📿', 'Tasbeh'],
-    ['morning', '🌅', 'Tonggi zikr'], ['evening', '🌙', 'Kechki zikr'], ['duas', '🤲', 'Duolar'],
-    ['hadith', '📜', 'Sahih hadis'], ['knowledge', '🎓', 'Islomiy bilim'], ['ai', '✨', 'TAQVO AI'],
-    ['quiz', '❓', 'Viktorina'], ['farz', '☪️', 'Farz amallar'], ['siyrat', '🕋', 'Siyrat'],
-    ['fiqh', '⚖️', 'Fiqh'], ['names', '🌟', 'Allohning 99 ismi'], ['juz', '📚', 'Qur’on juzlari'],
-    ['media', '🎬', 'Islomiy media'], ['leaderboard', '🏆', 'Reyting']
-  ];
+    const supportedLanguages = ["uz", "uz-Cyrl", "ru"];
 
-  /* ---------- Salomlashuv ---------- */
-  const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-  // Faqat ko'rsatish uchun. Haqiqiy foydalanuvchi identifikatsiyasi serverda initData orqali tekshiriladi (3-qadam).
-  $('hello').textContent = 'Assalomu alaykum' + (user && user.first_name ? ', ' + user.first_name : '');
+    const translations = {
+        uz: {
+            brandSubtitle: "Qalbga nur, hayotga hidoyat",
+            locationLabel: "SIZNING MANZILINGIZ",
+            selectCity: "Shaharni tanlang",
+            prayerLabel: "IBODAT VAQTLARI",
+            prayerTitle: "Namoz vaqtlari",
+            prayerSettings: "Sozlash ⚙",
+            fajr: "Bomdod",
+            dhuhr: "Peshin",
+            asr: "Asr",
+            maghrib: "Shom",
+            isha: "Xufton",
+            nextPrayer: "KEYINGI NAMOZ",
+            personalLabel: "SIZNING IBODATINGIZ",
+            personalTitle: "Shaxsiy kabinet",
+            myQuran: "Qur'onim",
+            lastReading: "Oxirgi o‘qilgan joy",
+            myKhatm: "Xatmim",
+            khatmProgress: "Xatm jarayoni",
+            myTasbeeh: "Tasbehim",
+            todayZikr: "Bugungi zikrlar",
+            myRanking: "Reytingim",
+            myPosition: "Mening o‘rnim",
+            saved: "Saqlanganlarim",
+            savedContent: "Oyat, hadis va duolar",
+            myMuhasaba: "Muhosabam",
+            dailyActions: "Kunlik amallar",
+            myGoals: "Maqsadlarim",
+            hifzGoals: "Hifz va ibodat rejalari",
+            myReminders: "Eslatmalarim",
+            personalNotifications: "Shaxsiy bildirishnomalar",
+            dailyLabel: "HAR KUNGI MA'NAVIY OZUQA",
+            dailyTitle: "Bugungi eslatma",
+            ayahOfDay: "KUN OYATI",
+            dailyAyahMeaning: "Bas, Meni eslanglar, Men ham sizlarni eslayman.",
+            readMore: "Batafsil o‘qish",
+            continueLabel: "DAVOM ETING",
+            continueQuran: "Qur'on tilovatini davom ettiring",
+            continueDescription: "Oxirgi o‘qigan sahifangizga qayting.",
+            mainLabel: "BARCHA XIZMATLAR",
+            mainTitle: "Asosiy bo‘limlar",
+            quranTitle: "Qur'oni Karim",
+            quranDescription: "114 sura · 30 juz · 604 sahifa",
+            openQuran: "Mushafni ochish",
+            prayerQibla: "Namoz vaqtlari + Qibla",
+            tasbeeh: "Elektron tasbeh",
+            adhkar: "Tonggi va kechki zikrlar",
+            duas: "Duo va munojotlar",
+            hadith: "Sahih hadislar",
+            ibadah: "Ibodat qo‘llanmasi",
+            seerah: "Siyrat va sahobalar",
+            fiqh: "Fiqh va to‘rt mazhab",
+            names: "Allohning 99 go‘zal ismi",
+            hajjUmrah: "Haj, Umra va ziyorat",
+            muhasaba: "Kunlik muhosaba",
+            tajweed: "Qur'on ta'limi va tajvid",
+            media: "Islomiy media va kutubxona",
+            extrasLabel: "QO‘SHIMCHA IMKONIYATLAR",
+            extrasTitle: "TAQVO xizmatlari",
+            hijriCalendar: "Hijriy taqvim",
+            family: "Oila va farzandlar",
+            arabic: "Arab tili",
+            fasting: "Ro‘za taqvimi",
+            dailyContent: "Kun oyati va hadisi",
+            ziyarat: "Ziyorat yo‘riqnomasi",
+            footerText: "Ilm, ibodat va go‘zal hayot sari.",
+            home: "Bosh sahifa",
+            quranNav: "Qur'on",
+            tasbeehNav: "Tasbeh",
+            profile: "Profil",
+            loading: "Yuklanmoqda...",
+            soon: "Bu bo‘lim hali ishga tushirilmagan. Tez orada taqdim etiladi.",
+            cityNotice: "Shahar tanlash xizmati backendga ulangandan keyin ishlaydi.",
+            prayerNotice: "Namoz vaqtlarini olish xizmati hali ulanmagan.",
+            notificationNotice: "Bildirishnomalar sozlamasi hali ulanmagan.",
+            telegramNotice: "Bu xizmat Telegram Mini App ichida ishlashga mo‘ljallangan.",
+            languageChanged: "Til o‘zgartirildi.",
+            hijriUnavailable: "Hijriy sana aniqlanmadi"
+        },
 
-  /* ---------- Shahar ---------- */
-  let city = store.get('city2', CITIES[0]);
-  $('cityName').textContent = city[0];
+        "uz-Cyrl": {
+            brandSubtitle: "Қалбга нур, ҳаётга ҳидоят",
+            locationLabel: "СИЗНИНГ МАНЗИЛИНГИЗ",
+            selectCity: "Шаҳарни танланг",
+            prayerLabel: "ИБОДАТ ВАҚТЛАРИ",
+            prayerTitle: "Намоз вақтлари",
+            prayerSettings: "Созлаш ⚙",
+            fajr: "Бомдод",
+            dhuhr: "Пешин",
+            asr: "Аср",
+            maghrib: "Шом",
+            isha: "Хуфтон",
+            nextPrayer: "КЕЙИНГИ НАМОЗ",
+            personalLabel: "СИЗНИНГ ИБОДАТИНГИЗ",
+            personalTitle: "Шахсий кабинет",
+            myQuran: "Қуръоним",
+            lastReading: "Охирги ўқилган жой",
+            myKhatm: "Хатмим",
+            khatmProgress: "Хатм жараёни",
+            myTasbeeh: "Тасбеҳим",
+            todayZikr: "Бугунги зикрлар",
+            myRanking: "Рейтингим",
+            myPosition: "Менинг ўрним",
+            saved: "Сақланганларим",
+            savedContent: "Оят, ҳадис ва дуолар",
+            myMuhasaba: "Муҳосабам",
+            dailyActions: "Кунлик амаллар",
+            myGoals: "Мақсадларим",
+            hifzGoals: "Ҳифз ва ибодат режалари",
+            myReminders: "Эслатмаларим",
+            personalNotifications: "Шахсий билдиришномалар",
+            dailyLabel: "ҲАР КУНГИ МАЪНАВИЙ ОЗУҚА",
+            dailyTitle: "Бугунги эслатма",
+            ayahOfDay: "КУН ОЯТИ",
+            dailyAyahMeaning: "Бас, Мени эсланглар, Мен ҳам сизларни эслайман.",
+            readMore: "Батафсил ўқиш",
+            continueLabel: "ДАВОМ ЭТИНГ",
+            continueQuran: "Қуръон тиловатини давом эттиринг",
+            continueDescription: "Охирги ўқиган саҳифангизга қайтинг.",
+            mainLabel: "БАРЧА ХИЗМАТЛАР",
+            mainTitle: "Асосий бўлимлар",
+            quranTitle: "Қуръони Карим",
+            quranDescription: "114 сура · 30 жуз · 604 саҳифа",
+            openQuran: "Мусҳафни очиш",
+            prayerQibla: "Намоз вақтлари + Қибла",
+            tasbeeh: "Электрон тасбеҳ",
+            adhkar: "Тонгги ва кечки зикрлар",
+            duas: "Дуо ва муножотлар",
+            hadith: "Саҳиҳ ҳадислар",
+            ibadah: "Ибодат қўлланмаси",
+            seerah: "Сийрат ва саҳобалар",
+            fiqh: "Фиқҳ ва тўрт мазҳаб",
+            names: "Аллоҳнинг 99 гўзал исми",
+            hajjUmrah: "Ҳаж, Умра ва зиёрат",
+            muhasaba: "Кунлик муҳосаба",
+            tajweed: "Қуръон таълими ва тажвид",
+            media: "Исломий медиа ва кутубхона",
+            extrasLabel: "ҚЎШИМЧА ИМКОНИЯТЛАР",
+            extrasTitle: "TAQVO хизматлари",
+            hijriCalendar: "Ҳижрий тақвим",
+            family: "Оила ва фарзандлар",
+            arabic: "Араб тили",
+            fasting: "Рўза тақвими",
+            dailyContent: "Кун ояти ва ҳадиси",
+            ziyarat: "Зиёрат йўриқномаси",
+            footerText: "Илм, ибодат ва гўзал ҳаёт сари.",
+            home: "Бош саҳифа",
+            quranNav: "Қуръон",
+            tasbeehNav: "Тасбеҳ",
+            profile: "Профиль",
+            loading: "Юкланмоқда...",
+            soon: "Бу бўлим ҳали ишга туширилмаган. Тез орада тақдим этилади.",
+            cityNotice: "Шаҳар танлаш хизмати backend'га улангандан кейин ишлайди.",
+            prayerNotice: "Намоз вақтларини олиш хизмати ҳали уланмаган.",
+            notificationNotice: "Билдиришномалар созламаси ҳали уланмаган.",
+            telegramNotice: "Бу хизмат Telegram Mini App ичида ишлашга мўлжалланган.",
+            languageChanged: "Тил ўзгартирилди.",
+            hijriUnavailable: "Ҳижрий сана аниқланмади"
+        },
 
-  const sheet = $('sheet'), list = $('cityList'), search = $('citySearch');
-  function renderCities(q) {
-    q = (q || '').trim().toLowerCase();
-    list.innerHTML = '';
-    const rows = CITIES.filter(c => (c[0] + c[1] + c[2] + c[3]).toLowerCase().includes(q));
-    if (!rows.length) { list.innerHTML = '<li class="empty">Shahar topilmadi. Boshqa nom bilan qidiring.</li>'; return; }
-    let last = '';
-    rows.forEach(c => {
-      if (c[3] !== last) { last = c[3]; const g = document.createElement('li'); g.className = 'grp'; g.textContent = c[3]; list.appendChild(g); }
-      const li = document.createElement('li');
-      if (c[1] === city[1] && c[2] === city[2]) li.className = 'sel';
-      const b = document.createElement('button');
-      b.textContent = c[0];
-      b.onclick = () => { city = c; store.set('city2', c); $('cityName').textContent = c[0]; closeSheet(); loadPrayers(); };
-      li.appendChild(b); list.appendChild(li);
-    });
-  }
-  function openSheet() { sheet.hidden = false; search.value = ''; renderCities(''); }
-  function closeSheet() { sheet.hidden = true; }
-  $('cityBtn').onclick = openSheet;
-  $('sheetClose').onclick = closeSheet;
-  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
-  search.addEventListener('input', () => renderCities(search.value));
+        ru: {
+            brandSubtitle: "Свет сердцу, руководство жизни",
+            locationLabel: "ВАШЕ МЕСТОПОЛОЖЕНИЕ",
+            selectCity: "Выберите город",
+            prayerLabel: "ВРЕМЕНА ПОКЛОНЕНИЯ",
+            prayerTitle: "Время намаза",
+            prayerSettings: "Настройки ⚙",
+            fajr: "Фаджр",
+            dhuhr: "Зухр",
+            asr: "Аср",
+            maghrib: "Магриб",
+            isha: "Иша",
+            nextPrayer: "СЛЕДУЮЩИЙ НАМАЗ",
+            personalLabel: "ВАШЕ ПОКЛОНЕНИЕ",
+            personalTitle: "Личный кабинет",
+            myQuran: "Мой Коран",
+            lastReading: "Последнее чтение",
+            myKhatm: "Мой хатм",
+            khatmProgress: "Прогресс чтения",
+            myTasbeeh: "Мой тасбих",
+            todayZikr: "Зикры за сегодня",
+            myRanking: "Мой рейтинг",
+            myPosition: "Моя позиция",
+            saved: "Сохранённое",
+            savedContent: "Аяты, хадисы и дуа",
+            myMuhasaba: "Мухасаба",
+            dailyActions: "Ежедневные дела",
+            myGoals: "Мои цели",
+            hifzGoals: "Планы заучивания и поклонения",
+            myReminders: "Мои напоминания",
+            personalNotifications: "Личные уведомления",
+            dailyLabel: "ДУХОВНАЯ ПИЩА НА КАЖДЫЙ ДЕНЬ",
+            dailyTitle: "Напоминание дня",
+            ayahOfDay: "АЯТ ДНЯ",
+            dailyAyahMeaning: "Поминайте Меня, и Я буду помнить о вас.",
+            readMore: "Подробнее",
+            continueLabel: "ПРОДОЛЖАЙТЕ",
+            continueQuran: "Продолжите чтение Корана",
+            continueDescription: "Вернитесь к последней прочитанной странице.",
+            mainLabel: "ВСЕ СЕРВИСЫ",
+            mainTitle: "Основные разделы",
+            quranTitle: "Священный Коран",
+            quranDescription: "114 сур · 30 джузов · 604 страницы",
+            openQuran: "Открыть Мусхаф",
+            prayerQibla: "Время намаза + Кибла",
+            tasbeeh: "Электронный тасбих",
+            adhkar: "Утренние и вечерние зикры",
+            duas: "Дуа и мольбы",
+            hadith: "Достоверные хадисы",
+            ibadah: "Руководство по поклонению",
+            seerah: "Сира и сподвижники",
+            fiqh: "Фикх и четыре мазхаба",
+            names: "99 прекрасных имён Аллаха",
+            hajjUmrah: "Хадж, Умра и зиярат",
+            muhasaba: "Ежедневная мухасаба",
+            tajweed: "Обучение Корану и таджвид",
+            media: "Исламские медиа и библиотека",
+            extrasLabel: "ДОПОЛНИТЕЛЬНЫЕ ВОЗМОЖНОСТИ",
+            extrasTitle: "Сервисы TAQVO",
+            hijriCalendar: "Исламский календарь",
+            family: "Семья и дети",
+            arabic: "Арабский язык",
+            fasting: "Календарь поста",
+            dailyContent: "Аят и хадис дня",
+            ziyarat: "Путеводитель по зиярату",
+            footerText: "На пути к знаниям, поклонению и благой жизни.",
+            home: "Главная",
+            quranNav: "Коран",
+            tasbeehNav: "Тасбих",
+            profile: "Профиль",
+            loading: "Загрузка...",
+            soon: "Этот раздел ещё не запущен. Скоро он станет доступен.",
+            cityNotice: "Выбор города станет доступен после подключения backend.",
+            prayerNotice: "Сервис времени намаза ещё не подключён.",
+            notificationNotice: "Настройки уведомлений ещё не подключены.",
+            telegramNotice: "Этот сервис предназначен для работы внутри Telegram Mini App.",
+            languageChanged: "Язык изменён.",
+            hijriUnavailable: "Дата хиджры недоступна"
+        }
+    };
 
-  /* ---------- Namoz vaqtlari (Aladhan API, qattiq yozilmagan) ---------- */
-  let times = null, tz = 'Asia/Tashkent';
+    let currentLanguage = "uz";
+    let toastTimer = null;
 
-  async function loadPrayers() {
-    const note = $('prayerNote');
-    note.className = 'note'; note.textContent = 'Yuklanmoqda…';
-    const key = 'pt:' + city[1] + city[2] + ':' + new Date().toDateString();
-    try {
-      const url = 'https://api.aladhan.com/v1/timingsByCity?city=' + encodeURIComponent(city[1]) +
-        '&country=' + encodeURIComponent(city[2]) + '&method=' + city[4] + '&school=' + city[5];
-      const r = await fetch(url);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
-      const t = j.data.timings;
-      times = {}; PRAYERS.forEach(p => { times[p[0]] = String(t[p[0]]).slice(0, 5); });
-      tz = j.data.meta.timezone || tz;
-      store.set(key, { times, tz });
-      note.textContent = '';
-    } catch (e) {
-      const c = store.get(key, null);
-      if (c) { times = c.times; tz = c.tz; note.textContent = 'Internet yo‘q: saqlangan vaqtlar ko‘rsatilmoqda.'; }
-      else { times = null; note.className = 'note err'; note.textContent = 'Namoz vaqtlarini olib bo‘lmadi. Internetni tekshirib, shaharni qayta tanlang.'; }
+    function translatePage() {
+        const dictionary = translations[currentLanguage];
+
+        document.documentElement.lang =
+            currentLanguage === "uz-Cyrl" ? "uz" : currentLanguage;
+
+        document.querySelectorAll("[data-i18n]").forEach(element => {
+            const key = element.dataset.i18n;
+
+            if (Object.prototype.hasOwnProperty.call(dictionary, key)) {
+                element.textContent = dictionary[key];
+            }
+        });
+
+        updateDates();
     }
-    renderPrayers(); tick();
-  }
 
-  function toSec(hm) { const [h, m] = hm.split(':').map(Number); return h * 3600 + m * 60; }
-  function nowSec() {
-    const p = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
-      .format(new Date()).split(':').map(Number);
-    return p[0] * 3600 + p[1] * 60 + p[2];
-  }
-  function nextPrayer() {
-    const n = nowSec();
-    for (let i = 0; i < PRAYERS.length; i++) { const s = toSec(times[PRAYERS[i][0]]); if (s > n) return { i, left: s - n }; }
-    return { i: 0, left: toSec(times.Fajr) + 86400 - n }; // ertangi Bomdod (taxminiy, ertasi kuni yangilanadi)
-  }
-  const pad = (x) => String(x).padStart(2, '0');
+    function setLanguage(language, showMessage = true) {
+        if (!supportedLanguages.includes(language)) {
+            language = "uz";
+        }
 
-  function renderPrayers() {
-    const box = $('prayers'); box.innerHTML = '';
-    PRAYERS.forEach(p => {
-      const d = document.createElement('div'); d.className = 'p'; d.dataset.k = p[0];
-      d.innerHTML = '<b>' + p[1] + '</b><span>' + (times ? times[p[0]] : '--:--') + '</span>';
-      box.appendChild(d);
-    });
-  }
-  function tick() {
-    if (!times) { $('nextName').textContent = '—'; $('countdown').textContent = '--:--:--'; $('nextAt').textContent = ''; return; }
-    const nx = nextPrayer(), k = PRAYERS[nx.i];
-    $('nextName').textContent = k[1];
-    $('nextAt').textContent = times[k[0]] + ' da';
-    $('countdown').textContent = pad(Math.floor(nx.left / 3600)) + ':' + pad(Math.floor(nx.left % 3600 / 60)) + ':' + pad(nx.left % 60);
-    document.querySelectorAll('.p').forEach(el => el.classList.toggle('next', el.dataset.k === k[0]));
-  }
-  setInterval(tick, 1000);
+        currentLanguage = language;
 
-  /* ---------- Bo'limlar va navigatsiya ---------- */
-  const grid = $('grid');
-  SECTIONS.forEach(s => {
-    const b = document.createElement('button'); b.className = 'tile'; b.dataset.open = s[0];
-    b.innerHTML = '<i>' + s[1] + '</i>' + s[2];
-    grid.appendChild(b);
-  });
+        try {
+            localStorage.setItem(STORAGE_KEY, language);
+        } catch (error) {
+            console.warn("Language preference could not be saved.");
+        }
 
-  const home = $('home'), view = $('view');
-  function show(page) { home.classList.toggle('active', page === home); view.classList.toggle('active', page === view); window.scrollTo(0, 0); }
+        const selector = document.getElementById("languageSelect");
 
-  function open(id) {
-    if (id === 'prayer') { goHome(); return; } // namoz vaqtlari bosh sahifada ishlaydi
-    if (id === 'morning' || id === 'evening') {
-      const r = window.TaqvoZikr.render(id, $('viewBody'));
-      $('viewTitle').textContent = r.title; $('viewStatus').textContent = r.status;
-      show(view); if (tg) tg.BackButton.show();
-      return;
+        if (selector) {
+            selector.value = language;
+        }
+
+        translatePage();
+
+        if (showMessage) {
+            showToast(translations[currentLanguage].languageChanged);
+        }
     }
-    const mod = window.TaqvoSections && window.TaqvoSections[id];
-    if (mod) {
-      const r = mod($('viewBody'));
-      $('viewTitle').textContent = r.title; $('viewStatus').textContent = r.status;
-      show(view); if (tg) tg.BackButton.show();
-      return;
+
+    function updateDates() {
+        const now = new Date();
+
+        const gregorian = document.getElementById("gregorianDate");
+        const hijri = document.getElementById("hijriDate");
+
+        const localeMap = {
+            uz: "uz-UZ",
+            "uz-Cyrl": "uz-Cyrl-UZ",
+            ru: "ru-RU"
+        };
+
+        const locale = localeMap[currentLanguage];
+
+        if (gregorian) {
+            gregorian.textContent = new Intl.DateTimeFormat(
+                locale,
+                {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                }
+            ).format(now);
+        }
+
+        if (hijri) {
+            try {
+                hijri.textContent = new Intl.DateTimeFormat(
+                    locale + "-u-ca-islamic",
+                    {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric"
+                    }
+                ).format(now);
+            } catch (error) {
+                hijri.textContent =
+                    translations[currentLanguage].hijriUnavailable;
+            }
+        }
     }
-    const s = SECTIONS.find(x => x[0] === id); if (!s) return;
-    $('viewTitle').textContent = s[2];
-    $('viewStatus').textContent = 'Hali ulanmagan';
-    $('viewBody').innerHTML = '<div class="empty">Bu bo‘lim keyingi qadamda to‘liq ishga tushadi. Hozir faqat bosh sahifa va namoz vaqtlari ishlaydi.</div>';
-    show(view);
-    if (tg) { tg.BackButton.show(); }
-  }
-  function goHome() { show(home); if (tg) tg.BackButton.hide(); }
 
-  document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-open]'); if (t) open(t.dataset.open);
-  });
-  $('backBtn').onclick = goHome;
-  if (tg) tg.BackButton.onClick(goHome);
+    function showToast(message) {
+        let toast = document.getElementById("taqvoToast");
 
-  // Bot tugmasidan to'g'ridan-to'g'ri bo'limga kirish: ?s=morning yoki ?s=evening
-  const deep = new URLSearchParams(location.search).get('s');
-  if (deep && SECTIONS.some((s) => s[0] === deep)) open(deep);
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "taqvoToast";
 
-  loadPrayers();
+            Object.assign(toast.style, {
+                position: "fixed",
+                zIndex: "999",
+                left: "50%",
+                bottom: "95px",
+                transform: "translateX(-50%)",
+                width: "calc(100% - 40px)",
+                maxWidth: "400px",
+                padding: "13px 16px",
+                border: "1px solid rgba(255,215,0,.3)",
+                borderRadius: "13px",
+                background: "#17151A",
+                color: "#FFD700",
+                textAlign: "center",
+                fontSize: "12px",
+                lineHeight: "1.5",
+                boxShadow: "0 8px 30px rgba(0,0,0,.45)"
+            });
+
+            document.body.appendChild(toast);
+        }
+
+        toast.textContent = message;
+        toast.hidden = false;
+
+        clearTimeout(toastTimer);
+
+        toastTimer = setTimeout(() => {
+            toast.hidden = true;
+        }, 3000);
+    }
+
+    function navigateTo(action) {
+        const targetMap = {
+            home: "app",
+            quran: "mainModules",
+            tasbeeh: "mainModules",
+            "taqvo-ai": "mainModules",
+            profile: "dashboard-section",
+            "my-quran": "dashboard-section",
+            "my-khatm": "dashboard-section",
+            "my-tasbeeh": "dashboard-section",
+            "my-ranking": "dashboard-section",
+            saved: "dashboard-section",
+            "my-muhasaba": "dashboard-section",
+            "my-goals": "dashboard-section",
+            "my-reminders": "dashboard-section",
+            "prayer-qibla": "prayer-section"
+        };
+
+        const targetId = targetMap[action];
+
+        if (targetId === "app") {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return true;
+        }
+
+        if (targetId === "dashboard-section") {
+            document.querySelector(".dashboard-section")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+            return true;
+        }
+
+        if (targetId === "prayer-section") {
+            document.querySelector(".prayer-section")?.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+            return true;
+        }
+
+        if (targetId) {
+            document.getElementById(targetId)?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+            return true;
+        }
+
+        return false;
+    }
+
+    function handleAction(action) {
+        const dictionary = translations[currentLanguage];
+
+        if (action === "select-city") {
+            showToast(dictionary.cityNotice);
+            return;
+        }
+
+        if (action === "prayer-settings") {
+            showToast(dictionary.prayerNotice);
+            return;
+        }
+
+        if (action === "notifications" || action === "my-reminders") {
+            showToast(dictionary.notificationNotice);
+            return;
+        }
+
+        if (action === "prayer-qibla") {
+            navigateTo(action);
+            showToast(dictionary.prayerNotice);
+            return;
+        }
+
+        if (action === "daily-ayah") {
+            showToast(dictionary.soon);
+            return;
+        }
+
+        if (action === "continue-quran") {
+            showToast(dictionary.soon);
+            return;
+        }
+
+        if (navigateTo(action)) {
+            return;
+        }
+
+        showToast(dictionary.soon);
+    }
+
+    function initTelegram() {
+        const telegram = window.Telegram?.WebApp;
+
+        if (!telegram) {
+            return;
+        }
+
+        try {
+            telegram.ready();
+            telegram.expand();
+
+            if (typeof telegram.disableVerticalSwipes === "function") {
+                telegram.disableVerticalSwipes();
+            }
+
+            document.documentElement.classList.add("telegram-mini-app");
+        } catch (error) {
+            console.warn("Telegram Mini App initialization issue:", error);
+        }
+    }
+
+    function bindEvents() {
+        const selector = document.getElementById("languageSelect");
+
+        selector?.addEventListener("change", event => {
+            setLanguage(event.target.value);
+        });
+
+        document.addEventListener("click", event => {
+            const button = event.target.closest("[data-action]");
+
+            if (!button) {
+                return;
+            }
+
+            const action = button.dataset.action;
+
+            if (!action) {
+                return;
+            }
+
+            if (button.classList.contains("nav-item")) {
+                document.querySelectorAll(".nav-item").forEach(item => {
+                    item.classList.toggle("active", item === button);
+                });
+            }
+
+            handleAction(action);
+        });
+    }
+
+    function init() {
+        let savedLanguage = "uz";
+
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+
+            if (supportedLanguages.includes(stored)) {
+                savedLanguage = stored;
+            }
+        } catch (error) {
+            console.warn("Could not read saved language.");
+        }
+
+        initTelegram();
+        setLanguage(savedLanguage, false);
+        bindEvents();
+
+        console.info("TAQVO PRO MAX initialized.");
+    }
+
+    return {
+        init,
+        setLanguage,
+        updateDates
+    };
 })();
+
+document.addEventListener("DOMContentLoaded", TAQVO.init);
