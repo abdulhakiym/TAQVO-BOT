@@ -2,7 +2,8 @@
 
 /* =====================================================
    TAQVO PRO MAX — APPLICATION CORE
-   Version 1.0
+   Version 1.1
+   Languages: Uzbek Latin, Uzbek Cyrillic, Russian
 ===================================================== */
 
 const TAQVO = (() => {
@@ -15,6 +16,8 @@ const TAQVO = (() => {
             brandSubtitle: "Qalbga nur, hayotga hidoyat",
             locationLabel: "SIZNING MANZILINGIZ",
             selectCity: "Shaharni tanlang",
+            hijriLabel: "Hijriy sana",
+            gregorianLabel: "Milodiy sana",
             prayerLabel: "IBODAT VAQTLARI",
             prayerTitle: "Namoz vaqtlari",
             prayerSettings: "Sozlash ⚙",
@@ -46,20 +49,24 @@ const TAQVO = (() => {
             dailyTitle: "Bugungi eslatma",
             ayahOfDay: "KUN OYATI",
             dailyAyahMeaning: "Bas, Meni eslanglar, Men ham sizlarni eslayman.",
+            ayahSource: "Al-Baqara, 152-oyat",
             readMore: "Batafsil o‘qish",
             continueLabel: "DAVOM ETING",
             continueQuran: "Qur'on tilovatini davom ettiring",
             continueDescription: "Oxirgi o‘qigan sahifangizga qayting.",
             mainLabel: "BARCHA XIZMATLAR",
             mainTitle: "Asosiy bo‘limlar",
+            quranFeatureLabel: "01 · QUR'ONI KARIM",
             quranTitle: "Qur'oni Karim",
             quranDescription: "114 sura · 30 juz · 604 sahifa",
-            openQuran: "Mushafni ochish",
+            openQuran: "Mushafni ochish →",
             prayerQibla: "Namoz vaqtlari + Qibla",
             tasbeeh: "Elektron tasbeh",
             adhkar: "Tonggi va kechki zikrlar",
             duas: "Duo va munojotlar",
             hadith: "Sahih hadislar",
+            quizTitle: "TAQVO QUIZ",
+            aiTitle: "TAQVO AI",
             ibadah: "Ibodat qo‘llanmasi",
             seerah: "Siyrat va sahobalar",
             fiqh: "Fiqh va to‘rt mazhab",
@@ -70,9 +77,14 @@ const TAQVO = (() => {
             media: "Islomiy media va kutubxona",
             extrasLabel: "QO‘SHIMCHA IMKONIYATLAR",
             extrasTitle: "TAQVO xizmatlari",
+            taqvoDaily: "TAQVO DAILY",
+            hifz: "HIFZ",
             hijriCalendar: "Hijriy taqvim",
             family: "Oila va farzandlar",
+            muhasabaPlus: "MUHOSABA PLUS",
+            taqvoAudio: "TAQVO AUDIO",
             arabic: "Arab tili",
+            ilmMajlisi: "ILM MAJLISI",
             fasting: "Ro‘za taqvimi",
             dailyContent: "Kun oyati va hadisi",
             ziyarat: "Ziyorat yo‘riqnomasi",
@@ -81,6 +93,8 @@ const TAQVO = (() => {
             quranNav: "Qur'on",
             tasbeehNav: "Tasbeh",
             profile: "Profil",
+            notificationsLabel: "Bildirishnomalar",
+            languageLabel: "Tilni tanlash",
             loading: "Yuklanmoqda...",
             soon: "Bu bo‘lim hali ishga tushirilmagan. Tez orada taqdim etiladi.",
             cityNotice: "Shahar tanlash xizmati backendga ulangandan keyin ishlaydi.",
@@ -95,6 +109,8 @@ const TAQVO = (() => {
             brandSubtitle: "Қалбга нур, ҳаётга ҳидоят",
             locationLabel: "СИЗНИНГ МАНЗИЛИНГИЗ",
             selectCity: "Шаҳарни танланг",
+            hijriLabel: "Ҳижрий сана",
+            gregorianLabel: "Милодий сана",
             prayerLabel: "ИБОДАТ ВАҚТЛАРИ",
             prayerTitle: "Намоз вақтлари",
             prayerSettings: "Созлаш ⚙",
@@ -126,20 +142,24 @@ const TAQVO = (() => {
             dailyTitle: "Бугунги эслатма",
             ayahOfDay: "КУН ОЯТИ",
             dailyAyahMeaning: "Бас, Мени эсланглар, Мен ҳам сизларни эслайман.",
+            ayahSource: "Бақара сураси, 152-оят",
             readMore: "Батафсил ўқиш",
             continueLabel: "ДАВОМ ЭТИНГ",
             continueQuran: "Қуръон тиловатини давом эттиринг",
             continueDescription: "Охирги ўқиган саҳифангизга қайтинг.",
             mainLabel: "БАРЧА ХИЗМАТЛАР",
             mainTitle: "Асосий бўлимлар",
+            quranFeatureLabel: "01 · ҚУРЪОНИ КАРИМ",
             quranTitle: "Қуръони Карим",
             quranDescription: "114 сура · 30 жуз · 604 саҳифа",
-            openQuran: "Мусҳафни очиш",
+            openQuran: "Мусҳафни очиш →",
             prayerQibla: "Намоз вақтлари + Қибла",
             tasbeeh: "Электрон тасбеҳ",
             adhkar: "Тонгги ва кечки зикрлар",
             duas: "Дуо ва муножотлар",
             hadith: "Саҳиҳ ҳадислар",
+            quizTitle: "TAQVO QUIZ",
+            aiTitle: "TAQVO AI",
             ibadah: "Ибодат қўлланмаси",
             seerah: "Сийрат ва саҳобалар",
             fiqh: "Фиқҳ ва тўрт мазҳаб",
@@ -150,9 +170,14 @@ const TAQVO = (() => {
             media: "Исломий медиа ва кутубхона",
             extrasLabel: "ҚЎШИМЧА ИМКОНИЯТЛАР",
             extrasTitle: "TAQVO хизматлари",
+            taqvoDaily: "TAQVO DAILY",
+            hifz: "ҲИФЗ",
             hijriCalendar: "Ҳижрий тақвим",
             family: "Оила ва фарзандлар",
+            muhasabaPlus: "МУҲОСАБА PLUS",
+            taqvoAudio: "TAQVO AUDIO",
             arabic: "Араб тили",
+            ilmMajlisi: "ИЛМ МАЖЛИСИ",
             fasting: "Рўза тақвими",
             dailyContent: "Кун ояти ва ҳадиси",
             ziyarat: "Зиёрат йўриқномаси",
@@ -161,6 +186,8 @@ const TAQVO = (() => {
             quranNav: "Қуръон",
             tasbeehNav: "Тасбеҳ",
             profile: "Профиль",
+            notificationsLabel: "Билдиришномалар",
+            languageLabel: "Тилни танлаш",
             loading: "Юкланмоқда...",
             soon: "Бу бўлим ҳали ишга туширилмаган. Тез орада тақдим этилади.",
             cityNotice: "Шаҳар танлаш хизмати backend'га улангандан кейин ишлайди.",
@@ -175,6 +202,8 @@ const TAQVO = (() => {
             brandSubtitle: "Свет сердцу, руководство жизни",
             locationLabel: "ВАШЕ МЕСТОПОЛОЖЕНИЕ",
             selectCity: "Выберите город",
+            hijriLabel: "Дата по хиджре",
+            gregorianLabel: "Григорианская дата",
             prayerLabel: "ВРЕМЕНА ПОКЛОНЕНИЯ",
             prayerTitle: "Время намаза",
             prayerSettings: "Настройки ⚙",
@@ -206,20 +235,24 @@ const TAQVO = (() => {
             dailyTitle: "Напоминание дня",
             ayahOfDay: "АЯТ ДНЯ",
             dailyAyahMeaning: "Поминайте Меня, и Я буду помнить о вас.",
+            ayahSource: "Сура «Аль-Бакара», аят 152",
             readMore: "Подробнее",
             continueLabel: "ПРОДОЛЖАЙТЕ",
             continueQuran: "Продолжите чтение Корана",
             continueDescription: "Вернитесь к последней прочитанной странице.",
             mainLabel: "ВСЕ СЕРВИСЫ",
             mainTitle: "Основные разделы",
+            quranFeatureLabel: "01 · СВЯЩЕННЫЙ КОРАН",
             quranTitle: "Священный Коран",
             quranDescription: "114 сур · 30 джузов · 604 страницы",
-            openQuran: "Открыть Мусхаф",
+            openQuran: "Открыть Мусхаф →",
             prayerQibla: "Время намаза + Кибла",
             tasbeeh: "Электронный тасбих",
             adhkar: "Утренние и вечерние зикры",
             duas: "Дуа и мольбы",
             hadith: "Достоверные хадисы",
+            quizTitle: "TAQVO QUIZ",
+            aiTitle: "TAQVO AI",
             ibadah: "Руководство по поклонению",
             seerah: "Сира и сподвижники",
             fiqh: "Фикх и четыре мазхаба",
@@ -230,9 +263,14 @@ const TAQVO = (() => {
             media: "Исламские медиа и библиотека",
             extrasLabel: "ДОПОЛНИТЕЛЬНЫЕ ВОЗМОЖНОСТИ",
             extrasTitle: "Сервисы TAQVO",
+            taqvoDaily: "TAQVO DAILY",
+            hifz: "ХИФЗ",
             hijriCalendar: "Исламский календарь",
             family: "Семья и дети",
+            muhasabaPlus: "МУХАСАБА PLUS",
+            taqvoAudio: "TAQVO AUDIO",
             arabic: "Арабский язык",
+            ilmMajlisi: "ИЛМ МАДЖЛИСИ",
             fasting: "Календарь поста",
             dailyContent: "Аят и хадис дня",
             ziyarat: "Путеводитель по зиярату",
@@ -241,6 +279,8 @@ const TAQVO = (() => {
             quranNav: "Коран",
             tasbeehNav: "Тасбих",
             profile: "Профиль",
+            notificationsLabel: "Уведомления",
+            languageLabel: "Выбор языка",
             loading: "Загрузка...",
             soon: "Этот раздел ещё не запущен. Скоро он станет доступен.",
             cityNotice: "Выбор города станет доступен после подключения backend.",
@@ -255,17 +295,29 @@ const TAQVO = (() => {
     let currentLanguage = "uz";
     let toastTimer = null;
 
+    function getDictionary() {
+        return translations[currentLanguage] || translations.uz;
+    }
+
     function translatePage() {
-        const dictionary = translations[currentLanguage];
+        const dictionary = getDictionary();
 
         document.documentElement.lang =
-            currentLanguage === "uz-Cyrl" ? "uz" : currentLanguage;
+            currentLanguage === "uz-Cyrl" ? "uz-Cyrl" : currentLanguage;
 
         document.querySelectorAll("[data-i18n]").forEach(element => {
             const key = element.dataset.i18n;
 
             if (Object.prototype.hasOwnProperty.call(dictionary, key)) {
                 element.textContent = dictionary[key];
+            }
+        });
+
+        document.querySelectorAll("[data-i18n-aria]").forEach(element => {
+            const key = element.dataset.i18nAria;
+
+            if (Object.prototype.hasOwnProperty.call(dictionary, key)) {
+                element.setAttribute("aria-label", dictionary[key]);
             }
         });
 
@@ -294,7 +346,7 @@ const TAQVO = (() => {
         translatePage();
 
         if (showMessage) {
-            showToast(translations[currentLanguage].languageChanged);
+            showToast(getDictionary().languageChanged);
         }
     }
 
@@ -310,23 +362,26 @@ const TAQVO = (() => {
             ru: "ru-RU"
         };
 
-        const locale = localeMap[currentLanguage];
+        const locale = localeMap[currentLanguage] || "uz-UZ";
 
         if (gregorian) {
-            gregorian.textContent = new Intl.DateTimeFormat(
-                locale,
-                {
+            try {
+                gregorian.textContent = new Intl.DateTimeFormat(locale, {
                     day: "numeric",
                     month: "long",
                     year: "numeric"
-                }
-            ).format(now);
+                }).format(now);
+            } catch (error) {
+                gregorian.textContent = now.toLocaleDateString();
+            }
         }
 
         if (hijri) {
             try {
+                const hijriLocale = locale + "-u-ca-islamic";
+
                 hijri.textContent = new Intl.DateTimeFormat(
-                    locale + "-u-ca-islamic",
+                    hijriLocale,
                     {
                         day: "numeric",
                         month: "long",
@@ -334,8 +389,7 @@ const TAQVO = (() => {
                     }
                 ).format(now);
             } catch (error) {
-                hijri.textContent =
-                    translations[currentLanguage].hijriUnavailable;
+                hijri.textContent = getDictionary().hijriUnavailable;
             }
         }
     }
@@ -432,7 +486,7 @@ const TAQVO = (() => {
     }
 
     function handleAction(action) {
-        const dictionary = translations[currentLanguage];
+        const dictionary = getDictionary();
 
         if (action === "select-city") {
             showToast(dictionary.cityNotice);
@@ -455,12 +509,7 @@ const TAQVO = (() => {
             return;
         }
 
-        if (action === "daily-ayah") {
-            showToast(dictionary.soon);
-            return;
-        }
-
-        if (action === "continue-quran") {
+        if (action === "daily-ayah" || action === "continue-quran") {
             showToast(dictionary.soon);
             return;
         }
@@ -501,7 +550,13 @@ const TAQVO = (() => {
         });
 
         document.addEventListener("click", event => {
-            const button = event.target.closest("[data-action]");
+            const target = event.target;
+
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const button = target.closest("[data-action]");
 
             if (!button) {
                 return;
@@ -537,10 +592,10 @@ const TAQVO = (() => {
         }
 
         initTelegram();
-        setLanguage(savedLanguage, false);
         bindEvents();
+        setLanguage(savedLanguage, false);
 
-        console.info("TAQVO PRO MAX initialized.");
+        console.info("TAQVO PRO MAX initialized successfully.");
     }
 
     return {
