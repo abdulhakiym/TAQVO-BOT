@@ -1,145 +1,763 @@
-:root{
-  --bg:#050507; --gold:#FFD700; --amber:#FF8C00;
-  --text:#F4EFE0; --muted:#9A957F;
-  --glass:rgba(255,255,255,.045); --line:rgba(255,215,0,.16);
-  --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+/* =====================================================
+   TAQVO PRO MAX — PREMIUM DESIGN SYSTEM
+   Version: 1.0
+   Mobile-first | iPhone | Android | Telegram Mini App
+===================================================== */
+
+:root {
+    --bg: #050507;
+    --surface: #101014;
+    --surface-light: #17171d;
+    --gold: #FFD700;
+    --gold-dark: #FF8C00;
+    --gold-gradient: linear-gradient(135deg, #FF8C00, #FFD700);
+    --text: #F8F5EA;
+    --muted: #92909A;
+    --border: rgba(255, 215, 0, 0.13);
+    --glass: rgba(255, 255, 255, 0.035);
+    --radius: 19px;
+    --max-width: 440px;
 }
-*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
-html,body{background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif;font-size:15px;line-height:1.5}
-body{min-height:100vh;background:
-  radial-gradient(120% 60% at 50% -10%,rgba(255,140,0,.14),transparent 60%),var(--bg)}
-button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
-#app{max-width:440px;margin:0 auto;padding:calc(var(--top) + 16px) 16px calc(var(--bot) + 28px)}
-.page{display:none}.page.active{display:block}
+/* RESET */
 
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
-.hello{color:var(--muted);font-size:13px}
-.brand{font-family:Amiri,serif;font-size:28px;letter-spacing:.04em;color:var(--gold);line-height:1.15}
-.brand span{color:var(--amber);font-size:.62em;letter-spacing:.14em}
-.city-btn{padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--glass);font-weight:600;font-size:13px}
-.city-btn::after{content:" ▾";color:var(--gold)}
-
-.hero{position:relative;overflow:hidden;text-align:center;padding:26px 16px 22px;border-radius:26px;
-  border:1px solid var(--line);background:linear-gradient(160deg,rgba(255,215,0,.10),rgba(255,140,0,.03) 55%,var(--glass))}
-.star{position:absolute;inset:-30% -10% auto auto;width:260px;color:var(--gold);opacity:.13;pointer-events:none}
-.hero-label{color:var(--muted);font-size:13px}
-.hero-prayer{font-family:Amiri,serif;font-size:34px;color:var(--gold);line-height:1.2}
-.hero-time{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin:2px 0}
-.hero-at{color:var(--muted);font-size:13px;min-height:1.5em}
-
-.prayers{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}
-.p{padding:10px 0;text-align:center;border:1px solid var(--line);border-radius:14px;background:var(--glass)}
-.p b{display:block;font-size:11px;font-weight:600;color:var(--muted)}
-.p span{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
-.p.next{border-color:var(--gold);background:rgba(255,215,0,.12)}
-.p.next b{color:var(--gold)}
-.note{color:var(--muted);font-size:12px;margin:8px 2px 0;min-height:1.4em}
-.note.err{color:#ff8a6b}
-
-.zikr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.zikr{padding:14px;border-radius:16px;font-weight:700;color:#1a1200;
-  background:linear-gradient(135deg,var(--gold),var(--amber))}
-.zikr:active{transform:scale(.98)}
-
-.h2{font-family:Amiri,serif;font-size:22px;color:var(--gold);margin:24px 2px 10px}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:10px 4px;
-  border:1px solid var(--line);border-radius:16px;background:var(--glass);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-size:12px;font-weight:600;text-align:center;line-height:1.25}
-.tile i{font-style:normal;font-size:22px}
-.tile:active{border-color:var(--gold)}
-.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
-
-.back{padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--glass);font-size:13px;font-weight:600}
-.back::before{content:"‹ ";color:var(--gold)}
-.view-title{font-family:Amiri,serif;font-size:30px;color:var(--gold);margin:18px 2px 8px}
-.status{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;
-  border:1px solid var(--line);color:var(--amber);margin:0 2px 14px}
-.empty{padding:22px;border:1px dashed var(--line);border-radius:18px;color:var(--muted);text-align:center}
-
-.sheet{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
-.sheet[hidden]{display:none}
-.sheet-card{width:100%;max-width:440px;max-height:78vh;display:flex;flex-direction:column;gap:10px;
-  padding:16px 16px calc(var(--bot) + 16px);border-radius:24px 24px 0 0;background:#0d0d12;border:1px solid var(--line)}
-.sheet-head{display:flex;justify-content:space-between;align-items:center}
-.sheet-head h3{font-family:Amiri,serif;font-size:20px;color:var(--gold);font-weight:700}
-.x{width:32px;height:32px;border-radius:50%;background:var(--glass)}
-#citySearch{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--text);font:inherit}
-#cityList{list-style:none;padding:0;overflow:auto}
-#cityList li button{width:100%;text-align:left;padding:13px 6px;border-bottom:1px solid rgba(255,255,255,.05)}
-#cityList li.sel button{color:var(--gold);font-weight:700}
-
-@media (prefers-reduced-motion:no-preference){
-  .page.active{animation:in .22s ease-out}
-  @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
-@media (max-width:360px){.hero-time{font-size:38px}.p span{font-size:12.5px}}
 
-#cityList li.grp{position:sticky;top:0;padding:8px 6px;background:#0d0d12;color:var(--amber);font-size:12px;font-weight:700}
+html {
+    scroll-behavior: smooth;
+    background: var(--bg);
+}
 
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background:
+        radial-gradient(
+            ellipse at 50% -15%,
+            rgba(255, 140, 0, 0.10),
+            transparent 48%
+        ),
+        var(--bg);
+    color: var(--text);
+    font-family: "DM Sans", sans-serif;
+    font-size: 14px;
+    overflow-x: hidden;
+}
 
-/* ---- Zikr bo'limi ---- */
-.zk-top{display:flex;justify-content:space-between;align-items:center;margin:2px 2px 10px}
-.zk-pos{font-size:13px;color:var(--muted);font-weight:600}
-.zk-chip{padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--glass);font-size:13px;font-weight:600}
-.zk-chip:disabled{opacity:.35}
-.zk-segs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;margin-bottom:14px}
-.zk-segs i{height:4px;border-radius:99px;background:rgba(255,255,255,.1)}
-.zk-segs i.on{background:linear-gradient(90deg,var(--gold),var(--amber))}
-.zk-segs i.cur{background:rgba(255,215,0,.45)}
-.zk-card{padding:18px 16px;border:1px solid var(--line);border-radius:24px;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.zk-card h3{font-size:13px;letter-spacing:.04em;color:var(--amber);font-weight:700;margin-bottom:10px}
-.zk-ar{font-family:Amiri,serif;font-size:26px;line-height:2.1;text-align:right;color:var(--text)}
-.zk-tr{margin-top:10px;font-size:13.5px;font-style:italic;color:#d9c98a;line-height:1.6}
-.zk-uz{margin-top:10px;font-size:14px;color:var(--text);line-height:1.6}
-.zk-fazl{margin-top:14px;padding:10px 12px;border-left:3px solid var(--gold);border-radius:4px 12px 12px 4px;background:rgba(255,215,0,.07)}
-.zk-fazl b{font-size:12px;color:var(--gold)}
-.zk-fazl p{font-size:13px;color:var(--muted);margin-top:2px;line-height:1.55}
-.zk-src{margin-top:10px;font-size:11.5px;color:var(--muted);opacity:.85}
-.zk-counter{display:flex;flex-direction:column;align-items:center;margin:20px 0 6px}
-.zk-ring{position:relative;width:168px;height:168px;border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,.10),transparent 70%)}
-.zk-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.zk-ring circle{fill:none;stroke-width:6}
-.zk-ring .bg{stroke:rgba(255,255,255,.09)}
-.zk-ring .fg{stroke:var(--gold);stroke-linecap:round;transition:stroke-dashoffset .25s}
-.zk-ring:active{transform:scale(.97)}
-.zk-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
-.zk-counter.full .zk-num{color:var(--gold)}
-.zk-counter.full .zk-ring{box-shadow:0 0 36px rgba(255,215,0,.28)}
-.zk-hint{margin-top:10px;font-size:12px;color:var(--muted);text-align:center}
-.zk-nav{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
-.zk-note{font-size:12.5px;color:var(--muted);margin:0 2px 10px}
-.zk-row{width:100%;display:flex;justify-content:space-between;gap:10px;text-align:left;padding:14px;margin-bottom:8px;border:1px solid var(--line);border-radius:16px;background:var(--glass);font-size:14px}
-.zk-row b{font-weight:600}
-.zk-row span{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.zk-row.ok{border-color:rgba(255,215,0,.5)}
-.zk-row.ok span{color:var(--gold)}
-.zk-reset{display:block;margin:14px auto 4px;padding:9px 16px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
-.zk-finish{text-align:center;padding:30px 16px;border:1px solid var(--gold);border-radius:24px;background:rgba(255,215,0,.07)}
-.zk-finish h3{font-family:Amiri,serif;font-size:28px;color:var(--gold)}
-.zk-finish p{color:var(--muted);margin:8px 0 16px;font-size:14px}
-.zk-btn{padding:13px 22px;border-radius:14px;font-weight:700;color:#1a1200;background:linear-gradient(135deg,var(--gold),var(--amber));margin-right:8px}
+button,
+select {
+    font: inherit;
+}
 
-/* ---- Qur'on va tasbeh ---- */
-.q-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.zk-chip.act{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.1)}
-.q-last{width:100%;text-align:left;padding:12px 14px;margin-bottom:12px;border:1px solid var(--gold);border-radius:16px;background:rgba(255,215,0,.07);font-size:13px;font-weight:600}
-.q-search{width:100%;padding:12px 14px;margin-bottom:10px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--text);font:inherit}
-.q-arn{font-family:Amiri,serif;font-size:17px;color:var(--gold)!important}
-.q-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.q-juz{padding:16px 0;border:1px solid var(--line);border-radius:14px;background:var(--glass);font-weight:600}
-.q-bar{display:flex;justify-content:space-between;align-items:center;margin:12px 2px}
-.q-bar b{font-family:Amiri,serif;font-size:24px;color:var(--gold)}
-.q-sura{font-family:Amiri,serif;font-size:22px;color:var(--amber);text-align:center;margin:18px 0 8px}
-.q-ayah{padding:14px;margin-bottom:8px;border:1px solid var(--line);border-radius:18px;background:var(--glass)}
-.q-ayah.playing{border-color:var(--gold);background:rgba(255,215,0,.08)}
-.q-ar{font-family:Amiri,serif;font-size:26px;line-height:2.1;text-align:right}
-.q-foot{display:flex;align-items:center;gap:6px;margin-top:8px}
-.q-foot span{flex:1;font-size:11.5px;color:var(--muted)}
-.q-ic{width:36px;height:34px;border-radius:10px;background:rgba(255,255,255,.06);font-size:15px}
-.zk-ring.tb{width:200px;height:200px;border-radius:50%;border:6px solid var(--line);background:radial-gradient(circle,rgba(255,215,0,.14),transparent 70%)}
+button {
+    color: inherit;
+    cursor: pointer;
+    border: none;
+}
 
-.zk-row.good{border-color:#5ec28a;background:rgba(94,194,138,.12)}
-.zk-row.bad{border-color:#e5736a;background:rgba(229,115,106,.12)}
+button:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+}
+
+.app-shell {
+    width: 100%;
+    max-width: var(--max-width);
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: 0 17px calc(105px + env(safe-area-inset-bottom));
+}
+
+/* HEADER */
+
+.top-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 17px 0 20px;
+    gap: 10px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.brand-symbol {
+    width: 43px;
+    height: 43px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--gold-gradient);
+    color: #171008;
+    font-family: "Amiri", serif;
+    font-size: 29px;
+    box-shadow: 0 5px 25px rgba(255, 174, 0, 0.18);
+}
+
+.brand-info h1 {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+}
+
+.brand-info h1 span {
+    color: var(--gold);
+}
+
+.brand-info p {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.icon-button,
+.header-actions select {
+    height: 36px;
+    min-width: 36px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--glass);
+    color: var(--gold);
+}
+
+.header-actions select {
+    padding: 0 7px;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+/* LOCATION */
+
+.location-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(
+        120deg,
+        rgba(255, 140, 0, 0.07),
+        rgba(255, 255, 255, 0.018)
+    );
+}
+
+.eyebrow {
+    color: var(--gold-dark);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+.location-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 7px;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.date-info {
+    text-align: right;
+    line-height: 1.8;
+    font-size: 10px;
+    color: var(--muted);
+}
+
+/* SECTION HEADINGS */
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 13px;
+}
+
+.section-heading h2 {
+    margin-top: 4px;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.small-link {
+    background: transparent;
+    color: var(--gold);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.prayer-section,
+.dashboard-section,
+.daily-section,
+.continue-section,
+.modules-section,
+.extras-section {
+    margin-bottom: 24px;
+}
+
+/* PRAYER TIMES */
+
+.prayer-section {
+    padding: 15px 11px;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    background: linear-gradient(
+        145deg,
+        rgba(255, 215, 0, 0.065),
+        rgba(255, 255, 255, 0.018)
+    );
+}
+
+.prayer-section .section-heading {
+    padding: 0 3px;
+}
+
+.prayer-times {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.prayer-item {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 2px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.025);
+    color: var(--muted);
+    font-size: 9px;
+    text-align: center;
+    transition: 0.2s ease;
+}
+
+.prayer-icon {
+    font-size: 17px;
+}
+
+.prayer-item strong {
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.prayer-item.active {
+    border-color: rgba(255, 215, 0, 0.4);
+    background: rgba(255, 180, 0, 0.10);
+    color: var(--gold);
+}
+
+.prayer-item.active strong {
+    color: var(--gold);
+}
+
+.next-prayer-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.27);
+}
+
+.next-prayer-panel div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.next-prayer-label {
+    color: var(--muted);
+    font-size: 8px;
+    letter-spacing: 1px;
+}
+
+#nextPrayerName {
+    color: var(--gold);
+    font-size: 12px;
+}
+
+.countdown {
+    color: var(--gold);
+    font-size: 17px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* PERSONAL DASHBOARD */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.dashboard-card {
+    min-width: 0;
+    min-height: 105px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 17px;
+    background: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.055),
+        rgba(255, 255, 255, 0.012)
+    );
+    text-align: left;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.dashboard-card:active,
+.module-card:active,
+.extra-card:active {
+    transform: scale(0.97);
+    border-color: var(--gold);
+}
+
+.dashboard-icon {
+    font-size: 21px;
+}
+
+.dashboard-card strong {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.dashboard-card small {
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.4;
+}
+
+/* DAILY AYAH */
+
+.daily-card {
+    position: relative;
+    overflow: hidden;
+    padding: 19px;
+    border: 1px solid rgba(255, 215, 0, 0.22);
+    border-radius: 21px;
+    background:
+        radial-gradient(
+            circle at 100% 0%,
+            rgba(255, 215, 0, 0.12),
+            transparent 55%
+        ),
+        #111014;
+}
+
+.daily-badge {
+    display: inline-block;
+    padding: 6px 9px;
+    border-radius: 7px;
+    background: rgba(255, 215, 0, 0.10);
+    color: var(--gold);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.arabic-text {
+    margin: 22px 0 14px;
+    color: var(--gold);
+    font-family: "Amiri", serif;
+    font-size: 30px;
+    line-height: 1.8;
+    text-align: center;
+}
+
+.daily-translation {
+    color: #E6E1D4;
+    font-size: 12px;
+    line-height: 1.8;
+    text-align: center;
+}
+
+.daily-card > small {
+    display: block;
+    margin-top: 10px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 10px;
+}
+
+.daily-action {
+    display: block;
+    margin: 17px auto 0;
+    padding: 10px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255, 215, 0, 0.07);
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* CONTINUE READING */
+
+.continue-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+}
+
+.continue-card h3 {
+    margin: 7px 0;
+    font-size: 13px;
+}
+
+.continue-card p {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.continue-button {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    background: var(--gold-gradient);
+    color: #171008;
+    font-size: 21px;
+    font-weight: 800;
+}
+
+/* MODULE COUNT */
+
+.module-count {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255, 215, 0, 0.07);
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+/* QURAN FEATURE */
+
+.quran-feature-card {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    min-height: 175px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 23px 19px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    border-radius: 23px;
+    background:
+        radial-gradient(
+            circle at 85% 50%,
+            rgba(255, 215, 0, 0.17),
+            transparent 40%
+        ),
+        linear-gradient(135deg, #211508, #100D0A 60%, #17120A);
+    text-align: left;
+}
+
+.quran-feature-content {
+    position: relative;
+    z-index: 2;
+}
+
+.feature-label {
+    color: var(--gold);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+.quran-feature-content h3 {
+    margin: 13px 0 7px;
+    font-size: 23px;
+    font-weight: 800;
+}
+
+.quran-feature-content p {
+    color: #B7AE9C;
+    font-size: 10px;
+}
+
+.feature-open {
+    display: inline-block;
+    margin-top: 18px;
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.quran-decoration {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 215, 0, 0.20);
+    font-family: "Amiri", serif;
+    font-size: 115px;
+}
+
+/* MAIN MODULES */
+
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.module-card {
+    position: relative;
+    min-height: 124px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.055),
+        rgba(255, 255, 255, 0.012)
+    );
+    text-align: left;
+    transition: 0.2s ease;
+}
+
+.module-number {
+    position: absolute;
+    top: 11px;
+    right: 12px;
+    color: rgba(255, 215, 0, 0.50);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.module-icon {
+    font-size: 27px;
+}
+
+.module-card strong {
+    max-width: 100%;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* EXTRA MODULES */
+
+.extras-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.extra-card {
+    min-width: 0;
+    min-height: 78px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    background: var(--surface);
+    text-align: left;
+    transition: 0.2s ease;
+}
+
+.extra-card span {
+    font-size: 22px;
+}
+
+.extra-card strong {
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+/* FOOTER */
+
+.app-footer {
+    padding: 25px 0 15px;
+    text-align: center;
+}
+
+.footer-symbol {
+    color: var(--gold);
+    font-family: "Amiri", serif;
+    font-size: 31px;
+}
+
+.app-footer h3 {
+    margin: 6px 0;
+    color: var(--gold);
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
+.app-footer p {
+    margin-bottom: 13px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.app-footer small {
+    color: #5D5A61;
+    font-size: 9px;
+}
+
+/* BOTTOM NAVIGATION */
+
+.bottom-navigation {
+    position: fixed;
+    z-index: 100;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: var(--max-width);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+    padding: 10px 9px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: rgba(8, 8, 11, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    padding: 5px 2px;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--muted);
+}
+
+.nav-item span {
+    font-size: 19px;
+}
+
+.nav-item small {
+    font-size: 8px;
+    font-weight: 600;
+}
+
+.nav-item.active {
+    color: var(--gold);
+    background: rgba(255, 215, 0, 0.07);
+}
+
+/* RESPONSIVE DESIGN */
+
+@media (max-width: 360px) {
+    .app-shell {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .prayer-section {
+        padding: 12px 7px;
+    }
+
+    .prayer-item {
+        font-size: 8px;
+        padding: 9px 1px;
+    }
+
+    .prayer-item strong {
+        font-size: 10px;
+    }
+
+    .dashboard-card {
+        min-height: 100px;
+        padding: 11px;
+    }
+
+    .module-card {
+        min-height: 115px;
+    }
+
+    .brand-info h1 {
+        font-size: 15px;
+    }
+}
+
+@media (min-width: 600px) {
+    body {
+        padding: 20px 0;
+    }
+
+    .app-shell {
+        border: 1px solid rgba(255, 215, 0, 0.08);
+        border-radius: 26px;
+        background: rgba(8, 8, 11, 0.5);
+    }
+
+    .bottom-navigation {
+        bottom: 20px;
+        border: 1px solid var(--border);
+        border-radius: 17px;
+    }
+}
+
+/* ACCESSIBILITY */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
