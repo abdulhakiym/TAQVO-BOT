@@ -609,7 +609,8 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
 
 /* =====================================================
    TAQVO PRO MAX — WORLDWIDE CITY & PRAYER CONNECTOR
-   Backend: taqvo-api-uz.onrender.com
+   Worldwide cities + live prayer times
+   Four Sunni madhhabs
 ===================================================== */
 
 (() => {
@@ -618,6 +619,13 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
     const API = "https://taqvo-api-uz.onrender.com";
     const CITY_KEY = "taqvo_selected_city";
     const PRAYER_KEY = "taqvo_prayer_settings";
+
+    const madhhabs = [
+        "hanafi",
+        "maliki",
+        "shafii",
+        "hanbali"
+    ];
 
     const prayerNames = {
         uz: {
@@ -654,12 +662,14 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             failed: "Namoz vaqtlarini yuklab bo‘lmadi.",
             settings: "Namoz sozlamalari",
             hanafi: "Hanafiy",
+            maliki: "Molikiy",
             shafii: "Shofe’iy",
+            hanbali: "Hanbaliy",
             method: "Hisoblash usuli",
             save: "Saqlash",
             cancel: "Bekor qilish",
             next: "Keyingi namoz",
-            today: "Bugungi namoz vaqtlari"
+            today: "Namoz vaqtlari yangilandi"
         },
         "uz-Cyrl": {
             search: "Шаҳар номини киритинг",
@@ -671,12 +681,14 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             failed: "Намоз вақтларини юклаб бўлмади.",
             settings: "Намоз созламалари",
             hanafi: "Ҳанафий",
+            maliki: "Моликий",
             shafii: "Шофеъий",
+            hanbali: "Ҳанбалий",
             method: "Ҳисоблаш усули",
             save: "Сақлаш",
             cancel: "Бекор қилиш",
             next: "Кейинги намоз",
-            today: "Бугунги намоз вақтлари"
+            today: "Намоз вақтлари янгиланди"
         },
         ru: {
             search: "Введите название города",
@@ -688,12 +700,14 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             failed: "Не удалось загрузить время намаза.",
             settings: "Настройки намаза",
             hanafi: "Ханафитский",
+            maliki: "Маликитский",
             shafii: "Шафиитский",
+            hanbali: "Ханбалитский",
             method: "Метод расчёта",
             save: "Сохранить",
             cancel: "Отмена",
             next: "Следующий намаз",
-            today: "Время намаза на сегодня"
+            today: "Время намаза обновлено"
         }
     };
 
@@ -703,36 +717,119 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
     let searchTimer = null;
     let searchRequest = null;
 
-    const language = () => {
+    function language() {
         const value = document.getElementById("languageSelect")?.value;
         return messages[value] ? value : "uz";
-    };
+    }
 
-    const t = (key) => messages[language()][key];
+    function t(key) {
+        return messages[language()][key] || key;
+    }
 
-    const names = () => prayerNames[language()];
+    function names() {
+        return prayerNames[language()] || prayerNames.uz;
+    }
 
     function notify(message) {
-        if (window.TAQVO?.showToast) {
-            window.TAQVO.showToast(message);
-            return;
-        }
-
         const toast = document.getElementById("taqvoToast");
 
         if (toast) {
             toast.textContent = message;
             toast.hidden = false;
-            setTimeout(() => {
+
+            clearTimeout(notify.timer);
+
+            notify.timer = setTimeout(() => {
                 toast.hidden = true;
             }, 3000);
-        } else {
-            alert(message);
+
+            return;
+        }
+
+        alert(message);
+    }
+
+    /* ==============================
+       MADHHAB SETTINGS
+    ============================== */
+
+    function getPrayerSettings() {
+        try {
+            const saved = JSON.parse(
+                localStorage.getItem(PRAYER_KEY)
+            ) || {};
+
+            const madhhab = madhhabs.includes(saved.madhhab)
+                ? saved.madhhab
+                : "hanafi";
+
+            return {
+                method: Number.isInteger(saved.method)
+                    ? saved.method
+                    : 3,
+
+                madhhab,
+
+                // AlAdhan: 1 = Hanafi, 0 = standard Asr.
+                // Maliki, Shafi'i and Hanbali use standard Asr here.
+                school: madhhab === "hanafi" ? 1 : 0
+            };
+        } catch {
+            return {
+                method: 3,
+                madhhab: "hanafi",
+                school: 1
+            };
         }
     }
 
+    function saveMadhhab(madhhab) {
+        if (!madhhabs.includes(madhhab)) {
+            return;
+        }
+
+        const current = getPrayerSettings();
+
+        localStorage.setItem(
+            PRAYER_KEY,
+            JSON.stringify({
+                method: current.method,
+                madhhab
+            })
+        );
+
+        if (selectedCity) {
+            loadPrayerTimes();
+        }
+
+        notify(t(madhhab));
+    }
+
+    function initMadhhabSelector() {
+        const selector = document.getElementById("madhhabSelect");
+
+        if (!selector) {
+            console.warn("Madhhab selector not found in index.html.");
+            return;
+        }
+
+        const settings = getPrayerSettings();
+
+        selector.value = settings.madhhab;
+
+        selector.addEventListener("change", () => {
+            saveMadhhab(selector.value);
+        });
+    }
+
+    /* ==============================
+       CITY SEARCH MODAL
+    ============================== */
+
     function addModalStyles() {
-        if (document.getElementById("taqvo-city-styles")) return;
+        if (document.getElementById("taqvo-city-styles")) {
+            return;
+        }
 
         const style = document.createElement("style");
         style.id = "taqvo-city-styles";
@@ -830,57 +927,76 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
     }
 
     function createModal() {
-        if (document.getElementById("taqvoCityModal")) return;
+        if (document.getElementById("taqvoCityModal")) {
+            return;
+        }
 
         addModalStyles();
 
         const modal = document.createElement("div");
         modal.id = "taqvoCityModal";
 
-        modal.innerHTML = `
-            <div class="taqvo-city-box">
-                <h2>📍 ${t("choose")}</h2>
-                <input
-                    id="taqvoCitySearch"
-                    type="search"
-                    placeholder="${t("search")}"
-                    autocomplete="off"
-                >
-                <div id="taqvoCityStatus"></div>
-                <div id="taqvoCityResults"></div>
-                <button class="taqvo-city-close" id="taqvoCityClose">
-                    ${t("cancel")}
-                </button>
-            </div>
-        `;
+        const box = document.createElement("div");
+        box.className = "taqvo-city-box";
 
+        const heading = document.createElement("h2");
+        heading.textContent = "📍 " + t("choose");
+
+        const input = document.createElement("input");
+        input.id = "taqvoCitySearch";
+        input.type = "search";
+        input.placeholder = t("search");
+        input.autocomplete = "off";
+
+        const status = document.createElement("div");
+        status.id = "taqvoCityStatus";
+
+        const results = document.createElement("div");
+        results.id = "taqvoCityResults";
+
+        const closeButton = document.createElement("button");
+        closeButton.className = "taqvo-city-close";
+        closeButton.id = "taqvoCityClose";
+        closeButton.textContent = t("cancel");
+
+        box.append(
+            heading,
+            input,
+            status,
+            results,
+            closeButton
+        );
+
+        modal.appendChild(box);
         document.body.appendChild(modal);
 
         modal.addEventListener("click", event => {
-            if (event.target === modal) closeCityModal();
+            if (event.target === modal) {
+                closeCityModal();
+            }
         });
 
-        document.getElementById("taqvoCityClose")
-            .addEventListener("click", closeCityModal);
+        closeButton.addEventListener("click", closeCityModal);
 
-        document.getElementById("taqvoCitySearch")
-            .addEventListener("input", event => {
-                const query = event.target.value.trim();
+        input.addEventListener("input", event => {
+            const query = event.target.value.trim();
 
-                clearTimeout(searchTimer);
+            clearTimeout(searchTimer);
 
-                if (searchRequest) {
-                    searchRequest.abort();
-                }
+            if (searchRequest) {
+                searchRequest.abort();
+            }
 
-                if (query.length < 2) {
-                    document.getElementById("taqvoCityResults").innerHTML = "";
-                    document.getElementById("taqvoCityStatus").textContent = "";
-                    return;
-                }
+            if (query.length < 2) {
+                results.innerHTML = "";
+                status.textContent = "";
+                return;
+            }
 
-                searchTimer = setTimeout(() => searchCities(query), 400);
-            });
+            searchTimer = setTimeout(() => {
+                searchCities(query);
+            }, 400);
+        });
     }
 
     function openCityModal() {
@@ -924,7 +1040,9 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
                 signal: searchRequest.signal
             });
 
-            if (!response.ok) throw new Error("City search failed");
+            if (!response.ok) {
+                throw new Error("City search failed");
+            }
 
             const data = await response.json();
 
@@ -937,7 +1055,6 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
 
             data.results.forEach(city => {
                 const button = document.createElement("button");
-
                 button.className = "taqvo-city-result";
 
                 const title = document.createElement("strong");
@@ -959,7 +1076,9 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             });
 
         } catch (error) {
-            if (error.name === "AbortError") return;
+            if (error.name === "AbortError") {
+                return;
+            }
 
             console.error("TAQVO city search:", error);
             status.textContent = t("error");
@@ -969,35 +1088,39 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
     async function selectCity(city) {
         selectedCity = city;
 
-        localStorage.setItem(CITY_KEY, JSON.stringify(city));
+        localStorage.setItem(
+            CITY_KEY,
+            JSON.stringify(city)
+        );
 
-        const location = document.getElementById("userLocation");
-
-        if (location) {
-            location.textContent = [
-                city.name,
-                city.country
-            ].filter(Boolean).join(", ");
-        }
+        updateLocationName();
 
         closeCityModal();
 
         await loadPrayerTimes();
     }
 
-    function getPrayerSettings() {
-        try {
-            return JSON.parse(localStorage.getItem(PRAYER_KEY)) || {
-                method: 3,
-                school: 1
-            };
-        } catch {
-            return { method: 3, school: 1 };
+    function updateLocationName() {
+        const location = document.getElementById("userLocation");
+
+        if (!location || !selectedCity) {
+            return;
         }
+
+        location.textContent = [
+            selectedCity.name,
+            selectedCity.country
+        ].filter(Boolean).join(", ");
     }
 
+    /* ==============================
+       PRAYER TIMES API
+    ============================== */
+
     async function loadPrayerTimes() {
-        if (!selectedCity) return;
+        if (!selectedCity) {
+            return;
+        }
 
         notify(t("loading"));
 
@@ -1005,20 +1128,45 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
 
         const url = new URL(API + "/api/prayer/today");
 
-        url.searchParams.set("latitude", selectedCity.latitude);
-        url.searchParams.set("longitude", selectedCity.longitude);
-        url.searchParams.set("timezone", selectedCity.timezone);
-        url.searchParams.set("method", settings.method);
-        url.searchParams.set("school", settings.school);
+        url.searchParams.set(
+            "latitude",
+            selectedCity.latitude
+        );
+
+        url.searchParams.set(
+            "longitude",
+            selectedCity.longitude
+        );
+
+        url.searchParams.set(
+            "timezone",
+            selectedCity.timezone
+        );
+
+        url.searchParams.set(
+            "method",
+            settings.method
+        );
+
+        url.searchParams.set(
+            "school",
+            settings.school
+        );
 
         try {
             const response = await fetch(url);
 
-            if (!response.ok) throw new Error("Prayer API failed");
+            if (!response.ok) {
+                throw new Error("Prayer API failed");
+            }
 
-            prayerData = await response.json();
+            const data = await response.json();
 
-            if (!prayerData.success) throw new Error("Invalid response");
+            if (!data.success || !data.timings) {
+                throw new Error("Invalid prayer response");
+            }
+
+            prayerData = data;
 
             renderPrayerTimes();
             updateCityDates();
@@ -1032,34 +1180,32 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
     }
 
     function renderPrayerTimes() {
-        if (!prayerData?.timings) return;
+        if (!prayerData?.timings) {
+            return;
+        }
 
         Object.entries(prayerData.timings).forEach(([key, value]) => {
             const item = document.querySelector(
                 `.prayer-item[data-prayer="${key}"]`
             );
 
-            if (!item) return;
+            if (!item) {
+                return;
+            }
 
             const strong = item.querySelector("strong");
 
-            if (strong) strong.textContent = value || "--:--";
+            if (strong) {
+                strong.textContent = value || "--:--";
+            }
         });
-
-        const hijri = document.getElementById("hijriDate");
-
-        if (hijri && prayerData.hijri?.date) {
-            const h = prayerData.hijri;
-            hijri.textContent = [
-                h.day,
-                h.month?.en,
-                h.year,
-                "AH"
-            ].filter(Boolean).join(" ");
-        }
 
         updateNextPrayer();
     }
+
+    /* ==============================
+       CITY CLOCK & COUNTDOWN
+    ============================== */
 
     function getCityClock() {
         const parts = new Intl.DateTimeFormat("en-GB", {
@@ -1084,9 +1230,18 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
     }
 
     function updateNextPrayer() {
-        if (!prayerData?.timings || !selectedCity) return;
+        if (!prayerData?.timings || !selectedCity) {
+            return;
+        }
 
-        const order = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
+        const order = [
+            "fajr",
+            "dhuhr",
+            "asr",
+            "maghrib",
+            "isha"
+        ];
+
         const clock = getCityClock();
 
         const nowSeconds =
@@ -1100,10 +1255,16 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
         for (const key of order) {
             const value = prayerData.timings[key];
 
-            if (!value) continue;
+            if (!value) {
+                continue;
+            }
 
-            const [hour, minute] = value.split(":").map(Number);
-            const prayerSeconds = hour * 3600 + minute * 60;
+            const [hour, minute] = value
+                .split(":")
+                .map(Number);
+
+            const prayerSeconds =
+                hour * 3600 + minute * 60;
 
             if (prayerSeconds > nowSeconds) {
                 next = key;
@@ -1115,22 +1276,35 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
         if (!next) {
             next = "fajr";
 
-            const [hour, minute] =
-                prayerData.timings.fajr.split(":").map(Number);
+            const [hour, minute] = prayerData.timings.fajr
+                .split(":")
+                .map(Number);
 
             difference =
-                86400 - nowSeconds + hour * 3600 + minute * 60;
+                86400 -
+                nowSeconds +
+                hour * 3600 +
+                minute * 60;
         }
 
-        document.getElementById("nextPrayerName").textContent =
-            names()[next];
+        const nextName = document.getElementById("nextPrayerName");
+        const countdown = document.getElementById("nextPrayerCountdown");
 
-        const h = Math.floor(difference / 3600);
-        const m = Math.floor((difference % 3600) / 60);
-        const s = difference % 60;
+        if (nextName) {
+            nextName.textContent = names()[next];
+        }
 
-        document.getElementById("nextPrayerCountdown").textContent =
-            [h, m, s].map(value => String(value).padStart(2, "0")).join(":");
+        if (countdown) {
+            const h = Math.floor(difference / 3600);
+            const m = Math.floor((difference % 3600) / 60);
+            const s = difference % 60;
+
+            countdown.textContent = [
+                h,
+                m,
+                s
+            ].map(value => String(value).padStart(2, "0")).join(":");
+        }
 
         document.querySelectorAll(".prayer-item").forEach(item => {
             item.classList.toggle(
@@ -1140,8 +1314,14 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
         });
     }
 
+    /* ==============================
+       LOCAL DATES
+    ============================== */
+
     function updateCityDates() {
-        if (!selectedCity) return;
+        if (!selectedCity) {
+            return;
+        }
 
         const now = new Date();
 
@@ -1151,7 +1331,7 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             ru: "ru-RU"
         };
 
-        const locale = localeMap[language()];
+        const locale = localeMap[language()] || "uz-UZ";
 
         const gregorian = document.getElementById("gregorianDate");
 
@@ -1163,7 +1343,24 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
                 timeZone: selectedCity.timezone
             }).format(now);
         }
+
+        const hijri = document.getElementById("hijriDate");
+
+        if (hijri && prayerData?.hijri) {
+            const h = prayerData.hijri;
+
+            hijri.textContent = [
+                h.day,
+                h.month?.en,
+                h.year,
+                "AH"
+            ].filter(Boolean).join(" ");
+        }
     }
+
+    /* ==============================
+       PRAYER CALCULATION SETTINGS
+    ============================== */
 
     function openPrayerSettings() {
         const settings = getPrayerSettings();
@@ -1173,46 +1370,47 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             String(settings.method)
         );
 
-        if (methodInput === null) return;
+        if (methodInput === null) {
+            return;
+        }
 
         const method = Number(methodInput);
 
-        if (!Number.isInteger(method) ||
-            !((method >= 0 && method <= 23) || method === 99)) {
+        if (
+            !Number.isInteger(method) ||
+            !((method >= 0 && method <= 23) || method === 99)
+        ) {
             notify(t("error"));
             return;
         }
 
-        const schoolInput = prompt(
-            t("hanafi") + " = 1\n" + t("shafii") + " = 0",
-            String(settings.school)
+        localStorage.setItem(
+            PRAYER_KEY,
+            JSON.stringify({
+                method,
+                madhhab: settings.madhhab
+            })
         );
-
-        if (schoolInput === null) return;
-
-        const school = Number(schoolInput);
-
-        if (![0, 1].includes(school)) {
-            notify(t("error"));
-            return;
-        }
-
-        localStorage.setItem(PRAYER_KEY, JSON.stringify({
-            method,
-            school
-        }));
 
         loadPrayerTimes();
     }
 
+    /* ==============================
+       BUTTON EVENTS
+    ============================== */
+
     function handleConnectorClick(event) {
         const target = event.target;
 
-        if (!(target instanceof Element)) return;
+        if (!(target instanceof Element)) {
+            return;
+        }
 
         const button = target.closest("[data-action]");
 
-        if (!button) return;
+        if (!button) {
+            return;
+        }
 
         const action = button.dataset.action;
 
@@ -1220,6 +1418,7 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             event.preventDefault();
             event.stopImmediatePropagation();
             openCityModal();
+            return;
         }
 
         if (action === "prayer-settings") {
@@ -1229,8 +1428,18 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
         }
     }
 
+    /* ==============================
+       INITIALIZATION
+    ============================== */
+
     function init() {
-        document.addEventListener("click", handleConnectorClick, true);
+        document.addEventListener(
+            "click",
+            handleConnectorClick,
+            true
+        );
+
+        initMadhhabSelector();
 
         try {
             const saved = localStorage.getItem(CITY_KEY);
@@ -1238,25 +1447,21 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
             if (saved) {
                 selectedCity = JSON.parse(saved);
 
-                const location = document.getElementById("userLocation");
-
-                if (location) {
-                    location.textContent = [
-                        selectedCity.name,
-                        selectedCity.country
-                    ].filter(Boolean).join(", ");
-                }
-
+                updateLocationName();
                 loadPrayerTimes();
             }
         } catch (error) {
-            console.warn("TAQVO saved city could not be loaded.");
+            console.warn("Saved city could not be loaded.", error);
         }
 
-        if (countdownTimer) clearInterval(countdownTimer);
+        if (countdownTimer) {
+            clearInterval(countdownTimer);
+        }
 
         countdownTimer = setInterval(() => {
-            if (prayerData) updateNextPrayer();
+            if (prayerData) {
+                updateNextPrayer();
+            }
         }, 1000);
 
         document.getElementById("languageSelect")
@@ -1267,13 +1472,18 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
                 }
             });
 
-        console.info("TAQVO worldwide prayer connector initialized.");
+        console.info(
+            "TAQVO worldwide city, prayer and madhhab connector initialized."
+        );
     }
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init, { once: true });
+        document.addEventListener(
+            "DOMContentLoaded",
+            init,
+            { once: true }
+        );
     } else {
         init();
     }
 })();
-
