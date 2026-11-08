@@ -838,12 +838,25 @@ select:focus-visible {
         font-size: 14px;
     }
 }
-/* Namoz taymeri miltillashini to‘xtatish */
-#nextPrayerCountdown {
+/* TAQVO — BARQAROR NAMOZ TAYMERI */
+#nextPrayerCountdown,
+.countdown {
+    display: inline-block !important;
+    width: 8ch !important;
+    min-width: 8ch !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+
+    font-family: "Courier New", monospace !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums !important;
+    font-feature-settings: "tnum" 1 !important;
+
     animation: none !important;
     transition: none !important;
+    transform: none !important;
     opacity: 1 !important;
     visibility: visible !important;
-    transform: none !important;
-    will-change: auto !important;
+    contain: layout style !important;
 }
