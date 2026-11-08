@@ -838,3 +838,12 @@ select:focus-visible {
         font-size: 14px;
     }
 }
+/* Namoz taymeri miltillashini to‘xtatish */
+#nextPrayerCountdown {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    will-change: auto !important;
+}
