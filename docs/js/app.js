@@ -1318,263 +1318,76 @@ document.addEventListener("DOMContentLoaded", TAQVO.init);
     /* ---------------- NEXT PRAYER ---------------- */
 
     function updateNextPrayer() {
-        if (!prayerData?.timings || !selectedCity) return;
+    if (!prayerData?.timings || !selectedCity) return;
 
-        const clock = getCityClock();
+    const clock = getCityClock();
 
-        const nowSeconds =
-            clock.hour * 3600 +
-            clock.minute * 60 +
-            clock.second;
+    const nowSeconds =
+        clock.hour * 3600 +
+        clock.minute * 60 +
+        clock.second;
 
-        let nextPrayer = null;
-        let difference = null;
+    let nextPrayer = null;
+    let difference = null;
 
-        for (const key of PRAYERS) {
-            const prayerSeconds = parsePrayerTime(
-                prayerData.timings[key]
-            );
-
-            if (prayerSeconds === null) continue;
-
-            if (prayerSeconds > nowSeconds) {
-                nextPrayer = key;
-                difference = prayerSeconds - nowSeconds;
-                break;
-            }
-        }
-
-        if (!nextPrayer) {
-            const fajrSeconds = parsePrayerTime(
-                prayerData.timings.fajr
-            );
-
-            if (fajrSeconds === null) return;
-
-            nextPrayer = "fajr";
-            difference = 86400 - nowSeconds + fajrSeconds;
-        }
-
-        const nextName = document.getElementById("nextPrayerName");
-        const countdown = document.getElementById("nextPrayerCountdown");
-
-        if (nextName) {
-            const name = prayerNames()[nextPrayer];
-
-            if (nextName.textContent !== name) {
-                nextName.textContent = name;
-            }
-        }
-
-        if (countdown) {
-            const h = Math.floor(difference / 3600);
-            const m = Math.floor((difference % 3600) / 60);
-            const s = difference % 60;
-
-            const value = [h, m, s]
-                .map(number => String(number).padStart(2, "0"))
-                .join(":");
-
-            if (countdown.textContent !== value) {
-                countdown.textContent = value;
-            }
-        }
-
-        // Update card highlighting only when next prayer changes.
-        if (lastActivePrayer !== nextPrayer) {
-            document.querySelectorAll(".prayer-item").forEach(item => {
-                item.classList.toggle(
-                    "active",
-                    item.dataset.prayer === nextPrayer
-                );
-            });
-
-            lastActivePrayer = nextPrayer;
-        }
-    }
-
-    /* ---------------- CITY DATES ---------------- */
-
-    function updateCityDates() {
-        if (!selectedCity) return;
-
-        const localeMap = {
-            uz: "uz-UZ",
-            "uz-Cyrl": "uz-Cyrl-UZ",
-            ru: "ru-RU"
-        };
-
-        const locale = localeMap[language()] || "uz-UZ";
-        const now = new Date();
-
-        const gregorian = document.getElementById("gregorianDate");
-
-        if (gregorian) {
-            gregorian.textContent = new Intl.DateTimeFormat(locale, {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-                timeZone: selectedCity.timezone
-            }).format(now);
-        }
-
-        const hijri = document.getElementById("hijriDate");
-
-        if (hijri && prayerData?.hijri) {
-            const h = prayerData.hijri;
-
-            const monthName = h.month?.en || "";
-
-            const value = [
-                h.day,
-                monthName,
-                h.year,
-                "AH"
-            ].filter(Boolean).join(" ");
-
-            if (value) hijri.textContent = value;
-        }
-    }
-
-    /* ---------------- PRAYER SETTINGS ---------------- */
-
-    function openPrayerSettings() {
-        const settings = getPrayerSettings();
-
-        const input = prompt(
-            t("method") + "\n0–23 yoki 99",
-            String(settings.method)
+    for (const key of PRAYERS) {
+        const prayerSeconds = parsePrayerTime(
+            prayerData.timings[key]
         );
 
-        if (input === null) return;
+        if (prayerSeconds === null) continue;
 
-        const method = Number(input);
-
-        if (
-            !Number.isInteger(method) ||
-            !((method >= 0 && method <= 23) || method === 99)
-        ) {
-            notify(t("invalidMethod"));
-            return;
+        if (prayerSeconds > nowSeconds) {
+            nextPrayer = key;
+            difference = prayerSeconds - nowSeconds;
+            break;
         }
+    }
 
-        writeStorage(PRAYER_KEY, {
-            method,
-            madhhab: settings.madhhab
+    if (!nextPrayer) {
+        const fajrSeconds = parsePrayerTime(
+            prayerData.timings.fajr
+        );
+
+        if (fajrSeconds === null) return;
+
+        nextPrayer = "fajr";
+        difference = 86400 - nowSeconds + fajrSeconds;
+    }
+
+    const nextName = document.getElementById("nextPrayerName");
+    const countdown = document.getElementById("nextPrayerCountdown");
+
+    if (nextName) {
+        const name = prayerNames()[nextPrayer];
+
+        if (nextName.textContent !== name) {
+            nextName.textContent = name;
+        }
+    }
+
+    if (countdown) {
+        const totalMinutes = Math.ceil(difference / 60);
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+
+        const value =
+            String(h).padStart(2, "0") + ":" +
+            String(m).padStart(2, "0");
+
+        if (countdown.textContent !== value) {
+            countdown.textContent = value;
+        }
+    }
+
+    if (lastActivePrayer !== nextPrayer) {
+        document.querySelectorAll(".prayer-item").forEach(item => {
+            item.classList.toggle(
+                "active",
+                item.dataset.prayer === nextPrayer
+            );
         });
 
-        if (selectedCity) loadPrayerTimes();
+        lastActivePrayer = nextPrayer;
     }
-
-    /* ---------------- BUTTON EVENTS ---------------- */
-
-    function handleConnectorClick(event) {
-        const target = event.target;
-
-        if (!(target instanceof Element)) return;
-
-        const button = target.closest("[data-action]");
-        if (!button) return;
-
-        const action = button.dataset.action;
-
-        if (action === "select-city") {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            openCityModal();
-            return;
-        }
-
-        if (action === "prayer-settings") {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            openPrayerSettings();
-        }
-    }
-
-    /* ---------------- LANGUAGE CHANGE ---------------- */
-
-    function handleLanguageChange() {
-        if (!selectedCity) return;
-
-        updateCityDates();
-
-        const modal = document.getElementById("taqvoCityModal");
-
-        if (modal) {
-            const heading = modal.querySelector("h2");
-            const input = document.getElementById("taqvoCitySearch");
-            const close = document.getElementById("taqvoCityClose");
-
-            if (heading) heading.textContent = "📍 " + t("choose");
-            if (input) input.placeholder = t("search");
-            if (close) close.textContent = t("cancel");
-        }
-
-        updateNextPrayer();
-    }
-
-    /* ---------------- INITIALIZATION ---------------- */
-
-    function init() {
-        document.addEventListener(
-            "click",
-            handleConnectorClick,
-            true
-        );
-
-        initMadhhabSelector();
-
-        const savedCity = readStorage(CITY_KEY);
-
-        if (savedCity) {
-            selectedCity = normalizeCity(savedCity);
-
-            if (selectedCity) {
-                updateLocationName();
-                loadPrayerTimes();
-            } else {
-                try {
-                    localStorage.removeItem(CITY_KEY);
-                } catch (error) {
-                    console.warn("Could not remove invalid city.");
-                }
-            }
-        }
-
-        document.addEventListener(
-            "taqvo:languagechange",
-            handleLanguageChange
-        );
-
-        // Only one interval. It never repeatedly calls the API
-        // except once when the selected city's date changes.
-        if (countdownTimer) {
-            clearInterval(countdownTimer);
-        }
-
-        countdownTimer = setInterval(() => {
-            if (!selectedCity) return;
-
-            const currentDate = getCityDateKey();
-
-            if (currentDate && currentDate !== lastCityDate) {
-                lastCityDate = currentDate;
-                loadPrayerTimes();
-                return;
-            }
-
-            updateNextPrayer();
-        }, 1000);
-
-        console.info("TAQVO PRO MAX prayer connector initialized.");
-    }
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init, {
-            once: true
-        });
-    } else {
-        init();
-    }
-})();
+}
