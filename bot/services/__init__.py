@@ -15,6 +15,13 @@ from bot.services.timezone import (
     is_valid_timezone,
 )
 
+from bot.services.user_service import (
+    deactivate_user,
+    get_user_by_telegram_id,
+    register_or_update_user,
+    update_user_preferences,
+)
+
 
 __all__ = [
     "PrayerAPIError",
@@ -26,4 +33,8 @@ __all__ = [
     "get_timezone",
     "get_timezone_offset",
     "is_valid_timezone",
+    "deactivate_user",
+    "get_user_by_telegram_id",
+    "register_or_update_user",
+    "update_user_preferences",
 ]
