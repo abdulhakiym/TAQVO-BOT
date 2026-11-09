@@ -1,3 +1,6 @@
+"""TAQVO BOT start and subscription handlers."""
+
+import logging
 
 from aiogram import Bot, Router
 from aiogram.exceptions import TelegramAPIError
@@ -9,14 +12,20 @@ from aiogram.types import (
     Message,
     WebAppInfo,
 )
+from sqlalchemy.exc import SQLAlchemyError
 
 from bot.config import get_settings
+from bot.services.user_service import register_or_update_user
 
+
+logger = logging.getLogger(__name__)
 
 router = Router(name="start")
 
 
 def subscription_keyboard() -> InlineKeyboardMarkup:
+    """Create the mandatory channel subscription keyboard."""
+
     settings = get_settings()
     channel = settings.channel_username.lstrip("@")
 
@@ -39,9 +48,16 @@ def subscription_keyboard() -> InlineKeyboardMarkup:
 
 
 def mini_app_keyboard() -> InlineKeyboardMarkup | None:
-    settings = get_settings()
+    """Create the Mini App launch keyboard."""
 
-    if not settings.mini_app_url:
+    settings = get_settings()
+    webapp_url = settings.webapp_url.strip()
+
+    if not webapp_url:
+        return None
+
+    if not webapp_url.startswith("https://"):
+        logger.error("WEBAPP_URL HTTPS manzil bo'lishi kerak.")
         return None
 
     return InlineKeyboardMarkup(
@@ -49,7 +65,7 @@ def mini_app_keyboard() -> InlineKeyboardMarkup | None:
             [
                 InlineKeyboardButton(
                     text="🚀 TAQVO PRO MAX'ni ochish",
-                    web_app=WebAppInfo(url=settings.mini_app_url),
+                    web_app=WebAppInfo(url=webapp_url),
                 )
             ]
         ]
@@ -60,7 +76,13 @@ async def check_user_subscription(
     bot: Bot,
     user_id: int,
 ) -> bool | None:
-    """Return True/False; None means Telegram API verification failed."""
+    """
+    Check channel membership.
+
+    True: subscribed.
+    False: not subscribed.
+    None: Telegram API verification failed.
+    """
 
     settings = get_settings()
 
@@ -78,18 +100,64 @@ async def check_user_subscription(
             return True
 
         if member.status == "restricted":
-            return bool(getattr(member, "is_member", False))
+            return bool(
+                getattr(member, "is_member", False)
+            )
 
         return False
 
     except TelegramAPIError:
+        logger.exception(
+            "Subscription check failed for user %s",
+            user_id,
+        )
         return None
+
+
+async def save_telegram_user(
+    message: Message,
+) -> bool:
+    """Save or update the Telegram user in PostgreSQL."""
+
+    telegram_user = message.from_user
+
+    if telegram_user is None:
+        return False
+
+    language = telegram_user.language_code
+
+    # Only use language codes supported by the project.
+    if language not in {"uz", "uz-Cyrl", "ru"}:
+        language = None
+
+    try:
+        await register_or_update_user(
+            telegram_id=telegram_user.id,
+            first_name=telegram_user.first_name,
+            username=telegram_user.username,
+            language=language,
+        )
+
+        logger.info(
+            "User %s saved successfully.",
+            telegram_user.id,
+        )
+        return True
+
+    except (SQLAlchemyError, ValueError):
+        logger.exception(
+            "Could not save Telegram user %s",
+            telegram_user.id,
+        )
+        return False
 
 
 async def send_access_message(
     message: Message,
     bot: Bot,
 ) -> None:
+    """Check subscription, save the user and show Mini App access."""
+
     if not message.from_user:
         return
 
@@ -115,20 +183,32 @@ async def send_access_message(
         )
         return
 
+    saved = await save_telegram_user(message)
+
+    if not saved:
+        await message.answer(
+            "⚠️ Obunangiz tasdiqlandi, lekin ma'lumotlaringizni "
+            "saqlashda vaqtinchalik xatolik yuz berdi.\n\n"
+            "Iltimos, birozdan keyin /start buyrug'ini qayta yuboring."
+        )
+        return
+
     keyboard = mini_app_keyboard()
 
     if keyboard is None:
         await message.answer(
             "Alhamdulillah! Obunangiz tasdiqlandi.\n\n"
-            "TAQVO PRO MAX Mini App manzili hali sozlanmagan. "
-            "Iltimos, administrator bilan bog'laning."
+            "Foydalanuvchi ma'lumotlaringiz saqlandi.\n"
+            "TAQVO PRO MAX Mini App manzili hali sozlanmagan "
+            "yoki noto'g'ri sozlangan."
         )
         return
 
     await message.answer(
         "Assalomu alaykum!\n\n"
         "TAQVO BOT'ga xush kelibsiz!\n"
-        "Obunangiz tasdiqlandi.\n\n"
+        "✅ Obunangiz tasdiqlandi.\n"
+        "✅ Ma'lumotlaringiz saqlandi.\n\n"
         "TAQVO PRO MAX xizmatlaridan foydalanishingiz mumkin.",
         reply_markup=keyboard,
     )
@@ -139,6 +219,8 @@ async def start_handler(
     message: Message,
     bot: Bot,
 ) -> None:
+    """Handle the /start command."""
+
     await send_access_message(message, bot)
 
 
@@ -149,8 +231,17 @@ async def subscription_callback(
     callback: CallbackQuery,
     bot: Bot,
 ) -> None:
-    if not callback.from_user or not callback.message:
+    """Handle the subscription verification button."""
+
+    if not callback.from_user:
         await callback.answer()
+        return
+
+    if not isinstance(callback.message, Message):
+        await callback.answer(
+            "Xabarni qayta ochib urinib ko'ring.",
+            show_alert=True,
+        )
         return
 
     is_subscribed = await check_user_subscription(
@@ -174,7 +265,28 @@ async def subscription_callback(
 
     await callback.answer("Obuna tasdiqlandi!")
 
+    saved = await save_telegram_user(callback.message)
+
+    if not saved:
+        await callback.message.answer(
+            "Obunangiz tasdiqlandi, ammo ma'lumotlarni "
+            "bazaga saqlashda xatolik yuz berdi.\n"
+            "Iltimos, keyinroq /start yuboring."
+        )
+        return
+
+    keyboard = mini_app_keyboard()
+
+    if keyboard is None:
+        await callback.message.answer(
+            "Alhamdulillah! Obunangiz tasdiqlandi "
+            "va ma'lumotlaringiz saqlandi.\n\n"
+            "Mini App manzili hali sozlanmagan."
+        )
+        return
+
     await callback.message.answer(
-        "Alhamdulillah! Obunangiz tasdiqlandi.",
-        reply_markup=mini_app_keyboard(),
+        "Alhamdulillah! Obunangiz tasdiqlandi.\n"
+        "Ma'lumotlaringiz bazaga saqlandi.",
+        reply_markup=keyboard,
     )
