@@ -1,4 +1,3 @@
-
 """TAQVO BOT start and subscription keyboards."""
 
 from aiogram.types import (
@@ -11,7 +10,7 @@ from bot.config import get_settings
 
 
 def subscription_keyboard() -> InlineKeyboardMarkup:
-    """Keyboard for channel subscription verification."""
+    """Create channel subscription keyboard."""
 
     settings = get_settings()
     channel = settings.channel_username.lstrip("@")
@@ -35,7 +34,7 @@ def subscription_keyboard() -> InlineKeyboardMarkup:
 
 
 def mini_app_keyboard() -> InlineKeyboardMarkup | None:
-    """Keyboard for opening TAQVO PRO MAX Mini App."""
+    """Create Mini App launch keyboard."""
 
     settings = get_settings()
 
