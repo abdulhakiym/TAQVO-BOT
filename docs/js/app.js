@@ -1,18 +1,13 @@
-
 /* =========================================================
-   TAQVO PRO MAX — COMPLETE APPLICATION
+   TAQVO PRO MAX — APPLICATION
    File: docs/js/app.js
-   Version: 2.0
-   Prayer calculation: Hanafi (fixed)
-   Languages: Uzbek, Uzbek Cyrillic, Russian
+   Version: 2.1.0
+   Prayer calculation: Hanafi fixed (no madhhab selector)
+   Languages: Uzbek Latin, Uzbek Cyrillic, Russian
    ========================================================= */
 
 (() => {
   "use strict";
-
-  /* =========================
-     1. CONFIGURATION
-  ========================= */
 
   const CONFIG = {
     API_BASE: "https://taqvo-api-uz.onrender.com",
@@ -20,13 +15,14 @@
     DEFAULT_METHOD: 3,
     DEFAULT_TIMEZONE: "Asia/Almaty",
     SEARCH_DELAY: 350,
-    REFRESH_INTERVAL: 60000
+    CACHE_REFRESH_INTERVAL: 60000
   };
 
   const STORAGE = {
     language: "taqvo_language",
     city: "taqvo_selected_city",
-    settings: "taqvo_prayer_settings"
+    settings: "taqvo_prayer_settings",
+    prayerCache: "taqvo_prayer_cache_v1"
   };
 
   const PRAYERS = [
@@ -37,127 +33,55 @@
     { id: "isha", key: "isha", names: { uz: "Xufton", "uz-Cyrl": "Хуфтон", ru: "Иша" } }
   ];
 
-  /* =========================
-     2. TRANSLATIONS
-  ========================= */
-
   const TRANSLATIONS = {
     uz: {
-      home: "Bosh sahifa",
-      quran: "Qur’oni Karim",
-      prayer: "Namoz vaqtlari",
-      tasbeeh: "Tasbeh",
-      morning: "Tonggi zikrlar",
-      evening: "Kechki zikrlar",
-      duas: "Duolar",
-      hadith: "Hadislar",
-      quiz: "TAQVO QUIZ",
-      ai: "TAQVO AI",
-      selectCity: "Shaharni tanlang",
-      searchCity: "Shahar nomini yozing...",
-      cityNotFound: "Shahar topilmadi",
-      loading: "Yuklanmoqda...",
-      connectionError: "Server bilan bog‘lanishda xatolik",
-      location: "Joylashuv",
-      today: "Bugun",
-      nextPrayer: "Keyingi namoz",
-      calculationMethod: "Hisoblash usuli",
-      settings: "Sozlamalar",
-      saved: "Saqlandi",
-      retry: "Qayta urinish",
-      noCity: "Avval shaharni tanlang",
-      chooseCity: "Shaharni tanlash",
-      close: "Yopish"
+      home: "Bosh sahifa", quran: "Qur’oni Karim", prayer: "Namoz vaqtlari",
+      tasbeeh: "Tasbeh", morning: "Tonggi zikrlar", evening: "Kechki zikrlar",
+      duas: "Duolar", hadith: "Hadislar", quiz: "TAQVO QUIZ", ai: "TAQVO AI",
+      selectCity: "Shaharni tanlang", searchCity: "Shahar nomini yozing...",
+      cityNotFound: "Shahar topilmadi", loading: "Yuklanmoqda...",
+      connectionError: "Server bilan bog‘lanishda xatolik", location: "Joylashuv",
+      today: "Bugun", nextPrayer: "Keyingi namoz", calculationMethod: "Hisoblash usuli",
+      settings: "Sozlamalar", saved: "Saqlandi", retry: "Qayta urinish",
+      noCity: "Avval shaharni tanlang", chooseCity: "Shaharni tanlash", close: "Yopish",
+      offlineCache: "Internet yo‘q. Saqlangan bugungi namoz vaqtlari ko‘rsatildi."
     },
-
     "uz-Cyrl": {
-      home: "Бош саҳифа",
-      quran: "Қуръони Карим",
-      prayer: "Намоз вақтлари",
-      tasbeeh: "Тасбеҳ",
-      morning: "Тонгги зикрлар",
-      evening: "Кечки зикрлар",
-      duas: "Дуолар",
-      hadith: "Ҳадислар",
-      quiz: "TAQVO QUIZ",
-      ai: "TAQVO AI",
-      selectCity: "Шаҳарни танланг",
-      searchCity: "Шаҳар номини ёзинг...",
-      cityNotFound: "Шаҳар топилмади",
-      loading: "Юкланмоқда...",
-      connectionError: "Сервер билан боғланишда хатолик",
-      location: "Жойлашув",
-      today: "Бугун",
-      nextPrayer: "Кейинги намоз",
-      calculationMethod: "Ҳисоблаш усули",
-      settings: "Созламалар",
-      saved: "Сақланди",
-      retry: "Қайта уриниш",
-      noCity: "Аввал шаҳарни танланг",
-      chooseCity: "Шаҳарни танлаш",
-      close: "Ёпиш"
+      home: "Бош саҳифа", quran: "Қуръони Карим", prayer: "Намоз вақтлари",
+      tasbeeh: "Тасбеҳ", morning: "Тонгги зикрлар", evening: "Кечки зикрлар",
+      duas: "Дуолар", hadith: "Ҳадислар", quiz: "TAQVO QUIZ", ai: "TAQVO AI",
+      selectCity: "Шаҳарни танланг", searchCity: "Шаҳар номини ёзинг...",
+      cityNotFound: "Шаҳар топилмади", loading: "Юкланмоқда...",
+      connectionError: "Сервер билан боғланишда хатолик", location: "Жойлашув",
+      today: "Бугун", nextPrayer: "Кейинги намоз", calculationMethod: "Ҳисоблаш усули",
+      settings: "Созламалар", saved: "Сақланди", retry: "Қайта уриниш",
+      noCity: "Аввал шаҳарни танланг", chooseCity: "Шаҳарни танлаш", close: "Ёпиш",
+      offlineCache: "Интернет йўқ. Сақланган бугунги намоз вақтлари кўрсатилди."
     },
-
     ru: {
-      home: "Главная",
-      quran: "Священный Коран",
-      prayer: "Время намаза",
-      tasbeeh: "Тасбих",
-      morning: "Утренние азкары",
-      evening: "Вечерние азкары",
-      duas: "Дуа",
-      hadith: "Хадисы",
-      quiz: "TAQVO QUIZ",
-      ai: "TAQVO AI",
-      selectCity: "Выберите город",
-      searchCity: "Введите название города...",
-      cityNotFound: "Город не найден",
-      loading: "Загрузка...",
-      connectionError: "Ошибка соединения с сервером",
-      location: "Местоположение",
-      today: "Сегодня",
-      nextPrayer: "Следующий намаз",
-      calculationMethod: "Метод расчёта",
-      settings: "Настройки",
-      saved: "Сохранено",
-      retry: "Повторить",
-      noCity: "Сначала выберите город",
-      chooseCity: "Выбрать город",
-      close: "Закрыть"
+      home: "Главная", quran: "Священный Коран", prayer: "Время намаза",
+      tasbeeh: "Тасбих", morning: "Утренние азкары", evening: "Вечерние азкары",
+      duas: "Дуа", hadith: "Хадисы", quiz: "TAQVO QUIZ", ai: "TAQVO AI",
+      selectCity: "Выберите город", searchCity: "Введите название города...",
+      cityNotFound: "Город не найден", loading: "Загрузка...",
+      connectionError: "Ошибка соединения с сервером", location: "Местоположение",
+      today: "Сегодня", nextPrayer: "Следующий намаз", calculationMethod: "Метод расчёта",
+      settings: "Настройки", saved: "Сохранено", retry: "Повторить",
+      noCity: "Сначала выберите город", chooseCity: "Выбрать город", close: "Закрыть",
+      offlineCache: "Нет интернета. Показано сохранённое время намаза на сегодня."
     }
   };
 
-  /* =========================
-     3. STATE
-  ========================= */
-
-  let language = localStorage.getItem(STORAGE.language) || CONFIG.DEFAULT_LANGUAGE;
-  let selectedCity = readJSON(STORAGE.city, null);
-
-  let prayerSettings = readJSON(STORAGE.settings, {
-    method: CONFIG.DEFAULT_METHOD,
-    madhhab: "hanafi"
-  });
-
-  // Hanafi is fixed. The user cannot change madhhab.
-  prayerSettings.madhhab = "hanafi";
-
-  let prayerData = null;
-  let countdownTimer = null;
-  let searchTimer = null;
-  let lastCountdownValue = "";
-  let citySearchRequest = 0;
-
-  /* =========================
-     4. HELPERS
-  ========================= */
+  /* -------------------------
+     State and safe storage
+  ------------------------- */
 
   function readJSON(key, fallback) {
     try {
-      const value = localStorage.getItem(key);
-      return value ? JSON.parse(value) : fallback;
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
     } catch (error) {
-      console.warn("TAQVO storage error:", error);
+      console.warn("TAQVO storage read error:", error);
       return fallback;
     }
   }
@@ -165,102 +89,223 @@
   function saveJSON(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      return true;
     } catch (error) {
-      console.warn("TAQVO save error:", error);
+      console.warn("TAQVO storage write error:", error);
+      return false;
     }
   }
 
-  function t(key) {
-    const dictionary = TRANSLATIONS[language] || TRANSLATIONS.uz;
-    return dictionary[key] || TRANSLATIONS.uz[key] || key;
+  function normalizeLanguage(value) {
+    return value === "uz-Cyrl" || value === "ru" ? value : "uz";
   }
 
-  function normalizeLanguage(value) {
-    if (value === "uz-Cyrl" || value === "ru") return value;
-    return "uz";
+  let language = normalizeLanguage(
+    localStorage.getItem(STORAGE.language) || CONFIG.DEFAULT_LANGUAGE
+  );
+  let selectedCity = readJSON(STORAGE.city, null);
+  let prayerSettings = readJSON(STORAGE.settings, {
+    method: CONFIG.DEFAULT_METHOD,
+    timezone: CONFIG.DEFAULT_TIMEZONE
+  });
+
+  if (!prayerSettings || typeof prayerSettings !== "object") {
+    prayerSettings = { method: CONFIG.DEFAULT_METHOD, timezone: CONFIG.DEFAULT_TIMEZONE };
+  }
+  prayerSettings.method = Number.isInteger(Number(prayerSettings.method))
+    ? Number(prayerSettings.method)
+    : CONFIG.DEFAULT_METHOD;
+  prayerSettings.madhhab = "hanafi";
+
+  let prayerData = null;
+  let countdownTimer = null;
+  let searchTimer = null;
+  let citySearchRequest = 0;
+  let prayerRequestId = 0;
+  let lastCountdownValue = "";
+  let lastPrayerDateKey = "";
+
+  /* -------------------------
+     General helpers
+  ------------------------- */
+
+  function t(key) {
+    return (TRANSLATIONS[language] || TRANSLATIONS.uz)[key] ||
+      TRANSLATIONS.uz[key] || key;
   }
 
   function escapeHTML(value) {
     return String(value ?? "").replace(/[&<>"']/g, char => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
     })[char]);
   }
 
-  function pad(number) {
-    return String(number).padStart(2, "0");
+  function pad(value) {
+    return String(value).padStart(2, "0");
   }
 
   function getTimezone() {
-    return selectedCity?.timezone ||
-      prayerSettings.timezone ||
-      CONFIG.DEFAULT_TIMEZONE;
+    return selectedCity?.timezone || prayerSettings.timezone || CONFIG.DEFAULT_TIMEZONE;
   }
 
   function showToast(message) {
     let toast = document.getElementById("taqvoToast");
-
     if (!toast) {
       toast = document.createElement("div");
       toast.id = "taqvoToast";
       document.body.appendChild(toast);
     }
-
     toast.textContent = message;
     toast.classList.add("show");
-
     clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => {
-      toast.classList.remove("show");
-    }, 2600);
+    toast._timer = setTimeout(() => toast.classList.remove("show"), 2800);
   }
 
-  function setLoading(element, message = null) {
-    if (!element) return;
-
-    element.textContent = message || t("loading");
+  function setLoading(element, message) {
+    if (element) element.textContent = message || t("loading");
   }
 
   async function apiRequest(path, options = {}) {
     const response = await fetch(CONFIG.API_BASE + path, {
       ...options,
-      headers: {
-        Accept: "application/json",
-        ...(options.headers || {})
-      }
+      headers: { Accept: "application/json", ...(options.headers || {}) }
     });
-
-    if (!response.ok) {
-      throw new Error("API error: " + response.status);
-    }
-
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
     return response.json();
   }
 
-  /* =========================
-     5. TELEGRAM WEB APP
-  ========================= */
+  function validCity(city) {
+    if (!city) return false;
+    const lat = Number(city.latitude);
+    const lon = Number(city.longitude);
+    return Number.isFinite(lat) && Number.isFinite(lon) &&
+      lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+  }
+
+  /* -------------------------
+     Correct city-local date/time
+  ------------------------- */
+
+  function getZonedParts(date = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: getTimezone(),
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(date);
+
+    const values = {};
+    parts.forEach(part => {
+      if (part.type !== "literal") values[part.type] = Number(part.value);
+    });
+    return values;
+  }
+
+  // A city-local wall-clock Date. Used only for comparing prayer clock times.
+  function getCityDate() {
+    try {
+      const p = getZonedParts();
+      return new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    } catch (error) {
+      console.warn("Timezone error:", getTimezone(), error);
+      return new Date();
+    }
+  }
+
+  function getCityDateKey() {
+    try {
+      const p = getZonedParts();
+      return `${p.year}-${pad(p.month)}-${pad(p.day)}`;
+    } catch {
+      const d = new Date();
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+  }
+
+  function updateCityDates() {
+    const dateElement = document.getElementById("gregorianDate");
+    if (dateElement) {
+      try {
+        dateElement.textContent = new Intl.DateTimeFormat(
+          language === "ru" ? "ru-RU" : "uz-UZ",
+          { day: "numeric", month: "long", year: "numeric", timeZone: getTimezone() }
+        ).format(new Date());
+      } catch (error) {
+        console.warn("Date formatting error:", error);
+      }
+    }
+
+    const clockElement = document.getElementById("cityClock");
+    if (clockElement) {
+      const now = getCityDate();
+      clockElement.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+
+    const hijriElement = document.getElementById("hijriDate");
+    if (hijriElement && prayerData?.hijri) {
+      const h = prayerData.hijri;
+      hijriElement.textContent = h.date ||
+        [h.day, h.month?.en || h.month, h.year].filter(Boolean).join(" ");
+    }
+  }
+
+  /* -------------------------
+     Prayer cache
+     Saved per city, local date and calculation method.
+  ------------------------- */
+
+  function getPrayerCacheKey() {
+    if (!selectedCity) return null;
+    return [
+      Number(selectedCity.latitude).toFixed(4),
+      Number(selectedCity.longitude).toFixed(4),
+      getTimezone(),
+      getCityDateKey(),
+      getPrayerSettings().method
+    ].join("|");
+  }
+
+  function savePrayerCache(data) {
+    if (!data?.timings || !selectedCity) return;
+    saveJSON(STORAGE.prayerCache, {
+      key: getPrayerCacheKey(),
+      timings: data.timings,
+      hijri: data.hijri || null,
+      cachedAt: new Date().toISOString()
+    });
+  }
+
+  function restorePrayerCache() {
+    if (!selectedCity) return false;
+    const cache = readJSON(STORAGE.prayerCache, null);
+    if (!cache || cache.key !== getPrayerCacheKey() ||
+        !cache.timings || typeof cache.timings !== "object") return false;
+
+    prayerData = {
+      timings: cache.timings,
+      hijri: cache.hijri || null,
+      cached: true,
+      cachedAt: cache.cachedAt || null
+    };
+    renderPrayerTimes();
+    renderPrayerNames();
+    updateCityDates();
+    updateNextPrayer();
+    return true;
+  }
+
+  /* -------------------------
+     Telegram Web App
+  ------------------------- */
 
   function initTelegram() {
-    const telegram = window.TeleGRAM?.WebApp;
-
+    const telegram = window.TELEGRAM?.WebApp;
     if (!telegram) return;
-
     try {
       telegram.ready();
       telegram.expand();
-
-      if (telegram.setHeaderColor) {
-        telegram.setHeaderColor("#050507");
-      }
-
-      if (telegram.setBackgroundColor) {
-        telegram.setBackgroundColor("#050507");
-      }
-
+      telegram.setHeaderColor?.("#050507");
+      telegram.setBackgroundColor?.("#050507");
       window.TAQVO_TELEGRAM = telegram;
       window.TAQVO_USER = telegram.initDataUnsafe?.user || null;
     } catch (error) {
@@ -268,483 +313,267 @@
     }
   }
 
-  /* =========================
-     6. LANGUAGE SYSTEM
-  ========================= */
+  /* -------------------------
+     Language
+  ------------------------- */
 
   function applyLanguage() {
-    document.documentElement.lang =
-      language === "uz-Cyrl" ? "uz" : language;
+    document.documentElement.lang = language === "uz-Cyrl" ? "uz" : language;
+    document.documentElement.dir = "ltr";
 
     document.querySelectorAll("[data-i18n]").forEach(element => {
-      const key = element.dataset.i18n;
-      const translated = t(key);
-
-      if (translated) element.textContent = translated;
+      element.textContent = t(element.dataset.i18n);
     });
-
     document.querySelectorAll("[data-i18n-placeholder]").forEach(element => {
       element.placeholder = t(element.dataset.i18nPlaceholder);
     });
 
-    const languageSelect = document.getElementById("languageSelect");
+    const select = document.getElementById("languageSelect");
+    if (select) select.value = language;
 
-    if (languageSelect) {
-      languageSelect.value = language;
-    }
+    const search = document.getElementById("taqvoCitySearch");
+    if (search) search.placeholder = t("searchCity");
+
+    const title = document.querySelector("#taqvoCityModal .taqvo-city-header strong");
+    if (title) title.textContent = t("selectCity");
 
     renderPrayerNames();
+    updateCityName();
     updateCityDates();
   }
 
   function changeLanguage(value) {
     language = normalizeLanguage(value);
-
-    localStorage.setItem(STORAGE.language, language);
-
-    applyLanguage();
-
-    if (selectedCity) {
-      loadPrayerTimes();
+    try {
+      localStorage.setItem(STORAGE.language, language);
+    } catch (error) {
+      console.warn("Language save error:", error);
     }
+    applyLanguage();
+    document.dispatchEvent(new CustomEvent("taqvo:language-changed", {
+      detail: { language }
+    }));
   }
 
   function initLanguage() {
-    language = normalizeLanguage(language);
-
     const select = document.getElementById("languageSelect");
-
     if (select) {
       select.value = language;
-
-      select.addEventListener("change", event => {
-        changeLanguage(event.target.value);
-      });
+      select.addEventListener("change", event => changeLanguage(event.target.value));
     }
-
     applyLanguage();
   }
 
-  /* =========================
-     7. NAVIGATION
-  ========================= */
+  /* -------------------------
+     Navigation
+  ------------------------- */
 
   function initNavigation() {
     document.addEventListener("click", event => {
       const link = event.target.closest("[data-section], [data-page]");
-
       if (!link) return;
 
-      const section =
-        link.dataset.section ||
-        link.dataset.page;
-
-      if (!section) return;
-
-      const target = document.getElementById(section);
-
+      const sectionId = link.dataset.section || link.dataset.page;
+      const target = sectionId && document.getElementById(sectionId);
       if (!target) return;
 
       event.preventDefault();
-
       document.querySelectorAll(".page, .app-section").forEach(page => {
         page.classList.remove("active");
       });
-
       target.classList.add("active");
 
       document.querySelectorAll("[data-section], [data-page]").forEach(item => {
         item.classList.remove("active");
       });
-
       link.classList.add("active");
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
 
-  /* =========================
-     8. CITY MODAL
-  ========================= */
+  /* -------------------------
+     City modal and styles
+  ------------------------- */
 
   function createCityModal() {
     if (document.getElementById("taqvoCityModal")) return;
 
     const modal = document.createElement("div");
-
     modal.id = "taqvoCityModal";
     modal.innerHTML = `
       <div class="taqvo-city-backdrop"></div>
-      <div class="taqvo-city-dialog">
+      <div class="taqvo-city-dialog" role="dialog" aria-modal="true">
         <div class="taqvo-city-header">
           <strong>${escapeHTML(t("selectCity"))}</strong>
-          <button type="button" id="taqvoCityClose">✕</button>
+          <button type="button" id="taqvoCityClose" aria-label="${escapeHTML(t("close"))}">✕</button>
         </div>
-        <input
-          id="taqvoCitySearch"
-          type="search"
-          placeholder="${escapeHTML(t("searchCity"))}"
-          autocomplete="off"
-        />
-        <div id="taqvoCityResults">
+        <input id="taqvoCitySearch" type="search"
+          placeholder="${escapeHTML(t("searchCity"))}" autocomplete="off" />
+        <div id="taqvoCityResults" aria-live="polite">
           <div class="taqvo-city-empty">${escapeHTML(t("searchCity"))}</div>
         </div>
-      </div>
-    `;
-
+      </div>`;
     document.body.appendChild(modal);
 
-    const style = document.createElement("style");
+    if (!document.getElementById("taqvoCityModalStyles")) {
+      const style = document.createElement("style");
+      style.id = "taqvoCityModalStyles";
+      style.textContent = `
+        #taqvoCityModal{display:none;position:fixed;inset:0;z-index:99999;font-family:inherit}
+        #taqvoCityModal.open{display:block}
+        .taqvo-city-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(7px)}
+        .taqvo-city-dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+          width:calc(100% - 32px);max-width:420px;max-height:80vh;overflow:hidden;box-sizing:border-box;
+          padding:20px;border:1px solid rgba(255,190,65,.35);border-radius:20px;background:#101014;color:#fff;
+          box-shadow:0 15px 60px rgba(0,0,0,.5)}
+        .taqvo-city-header{display:flex;justify-content:space-between;align-items:center;gap:12px;
+          margin-bottom:16px;color:#ffd36a}
+        #taqvoCityClose{border:0;background:transparent;color:#fff;font-size:22px;padding:4px 8px;cursor:pointer}
+        #taqvoCitySearch{width:100%;box-sizing:border-box;padding:14px;border-radius:12px;
+          border:1px solid #454047;outline:none;background:#1b1a20;color:#fff;font-size:16px}
+        #taqvoCityResults{overflow-y:auto;max-height:50vh;margin-top:12px}
+        .taqvo-city-result{width:100%;display:block;padding:13px 12px;margin:5px 0;border:1px solid #302d31;
+          border-radius:10px;background:#19181d;color:#fff;text-align:left;font-size:15px;cursor:pointer}
+        .taqvo-city-result:active{background:#493719}
+        .taqvo-city-empty{padding:16px 5px;color:#aaa;text-align:center}
+        #taqvoToast{position:fixed;z-index:100000;bottom:28px;left:50%;transform:translate(-50%,20px);
+          opacity:0;pointer-events:none;padding:12px 18px;border-radius:12px;background:#242126;color:#fff;
+          border:1px solid rgba(255,190,65,.4);transition:.2s ease;max-width:85%;text-align:center}
+        #taqvoToast.show{opacity:1;transform:translate(-50%,0)}
+      `;
+      document.head.appendChild(style);
+    }
 
-    style.id = "taqvoCityModalStyles";
-    style.textContent = `
-      #taqvoCityModal {
-        display:none;
-        position:fixed;
-        inset:0;
-        z-index:99999;
-        font-family:inherit;
-      }
-      #taqvoCityModal.open { display:block; }
-      .taqvo-city-backdrop {
-        position:absolute;
-        inset:0;
-        background:rgba(0,0,0,.78);
-        backdrop-filter:blur(7px);
-      }
-      .taqvo-city-dialog {
-        position:absolute;
-        left:50%;
-        top:50%;
-        transform:translate(-50%,-50%);
-        width:calc(100% - 32px);
-        max-width:420px;
-        max-height:80vh;
-        overflow:hidden;
-        padding:20px;
-        border:1px solid rgba(255,190,65,.35);
-        border-radius:20px;
-        background:#101014;
-        color:#fff;
-        box-shadow:0 15px 60px rgba(0,0,0,.5);
-      }
-      .taqvo-city-header {
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:12px;
-        margin-bottom:16px;
-        color:#ffd36a;
-      }
-      #taqvoCityClose {
-        border:0;
-        background:transparent;
-        color:#fff;
-        font-size:22px;
-        padding:4px 8px;
-      }
-      #taqvoCitySearch {
-        width:100%;
-        box-sizing:border-box;
-        padding:14px;
-        border-radius:12px;
-        border:1px solid #454047;
-        outline:none;
-        background:#1b1a20;
-        color:#fff;
-        font-size:16px;
-      }
-      #taqvoCityResults {
-        overflow-y:auto;
-        max-height:50vh;
-        margin-top:12px;
-      }
-      .taqvo-city-result {
-        width:100%;
-        display:block;
-        padding:13px 12px;
-        margin:5px 0;
-        border:1px solid #302d31;
-        border-radius:10px;
-        background:#19181d;
-        color:#fff;
-        text-align:left;
-        font-size:15px;
-      }
-      .taqvo-city-result:active {
-        background:#493719;
-      }
-      .taqvo-city-empty {
-        padding:16px 5px;
-        color:#aaa;
-        text-align:center;
-      }
-      #taqvoToast {
-        position:fixed;
-        z-index:100000;
-        bottom:28px;
-        left:50%;
-        transform:translate(-50%,20px);
-        opacity:0;
-        pointer-events:none;
-        padding:12px 18px;
-        border-radius:12px;
-        background:#242126;
-        color:#fff;
-        border:1px solid rgba(255,190,65,.4);
-        transition:.2s ease;
-        max-width:85%;
-        text-align:center;
-      }
-      #taqvoToast.show {
-        opacity:1;
-        transform:translate(-50%,0);
-      }
-    `;
-
-    document.head.appendChild(style);
-
-    document.getElementById("taqvoCityClose")
-      .addEventListener("click", closeCityModal);
-
-    modal.querySelector(".taqvo-city-backdrop")
-      .addEventListener("click", closeCityModal);
-
-    document.getElementById("taqvoCitySearch")
-      .addEventListener("input", handleCitySearch);
+    document.getElementById("taqvoCityClose").addEventListener("click", closeCityModal);
+    modal.querySelector(".taqvo-city-backdrop").addEventListener("click", closeCityModal);
+    document.getElementById("taqvoCitySearch").addEventListener("input", handleCitySearch);
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeCityModal();
+    });
   }
 
   function openCityModal() {
     createCityModal();
-
     const modal = document.getElementById("taqvoCityModal");
     const input = document.getElementById("taqvoCitySearch");
-
     modal.classList.add("open");
-
     input.value = "";
-    input.focus();
-
     document.getElementById("taqvoCityResults").innerHTML =
       `<div class="taqvo-city-empty">${escapeHTML(t("searchCity"))}</div>`;
+    input.focus();
   }
 
   function closeCityModal() {
     document.getElementById("taqvoCityModal")?.classList.remove("open");
   }
 
-  /* =========================
-     9. CITY SEARCH
-  ========================= */
+  /* -------------------------
+     City search
+  ------------------------- */
 
   function handleCitySearch(event) {
     const query = event.target.value.trim();
-
     clearTimeout(searchTimer);
+    citySearchRequest += 1;
 
     if (query.length < 2) {
       document.getElementById("taqvoCityResults").innerHTML =
         `<div class="taqvo-city-empty">${escapeHTML(t("searchCity"))}</div>`;
       return;
     }
-
-    searchTimer = setTimeout(() => {
-      searchCities(query);
-    }, CONFIG.SEARCH_DELAY);
+    searchTimer = setTimeout(() => searchCities(query), CONFIG.SEARCH_DELAY);
   }
 
   async function searchCities(query) {
-    const resultsElement = document.getElementById("taqvoCityResults");
+    const results = document.getElementById("taqvoCityResults");
+    if (!results) return;
     const requestId = ++citySearchRequest;
-
-    setLoading(resultsElement);
+    setLoading(results);
 
     try {
-      const params = new URLSearchParams({
-        q: query,
-        count: "15",
-        language: language
-      });
-
-      const data = await apiRequest(
-        `/api/prayer/cities?${params.toString()}`
-      );
-
+      const params = new URLSearchParams({ q: query, count: "15", language });
+      const data = await apiRequest(`/api/prayer/cities?${params.toString()}`);
       if (requestId !== citySearchRequest) return;
 
       const cities = Array.isArray(data)
         ? data
-        : data.cities || data.results || data.data || [];
+        : data?.cities || data?.results || data?.data || [];
 
-      if (!cities.length) {
-        resultsElement.innerHTML =
-          `<div class="taqvo-city-empty">${escapeHTML(t("cityNotFound"))}</div>`;
+      if (!Array.isArray(cities) || cities.length === 0) {
+        results.innerHTML = `<div class="taqvo-city-empty">${escapeHTML(t("cityNotFound"))}</div>`;
         return;
       }
 
-      resultsElement.innerHTML = "";
-
+      results.innerHTML = "";
       cities.forEach(city => {
         const button = document.createElement("button");
-
         button.type = "button";
         button.className = "taqvo-city-result";
-
-        const name =
-          city.name ||
-          city.city ||
-          city.display_name ||
-          city.name_ru ||
-          "Unknown";
-
+        const name = city.name || city.city || city.display_name || city.name_ru || "Unknown";
         const country = city.country || city.country_name || "";
-
         button.textContent = country ? `${name}, ${country}` : name;
-
-        button.addEventListener("click", () => {
-          selectCity(city);
-        });
-
-        resultsElement.appendChild(button);
+        button.addEventListener("click", () => selectCity(city));
+        results.appendChild(button);
       });
-
     } catch (error) {
       console.error("City search error:", error);
-
       if (requestId !== citySearchRequest) return;
-
-      resultsElement.innerHTML =
-        `<div class="taqvo-city-empty">${escapeHTML(t("connectionError"))}</div>`;
+      results.innerHTML = `<div class="taqvo-city-empty">${escapeHTML(t("connectionError"))}</div>`;
     }
   }
 
   function normalizeCity(city) {
-    const latitude = Number(
-      city.latitude ?? city.lat ?? city.location?.latitude
-    );
-
-    const longitude = Number(
-      city.longitude ?? city.lon ?? city.lng ?? city.location?.longitude
-    );
-
     return {
       name: city.name || city.city || city.display_name || "Unknown",
       country: city.country || city.country_name || "",
-      latitude,
-      longitude,
+      latitude: Number(city.latitude ?? city.lat ?? city.location?.latitude),
+      longitude: Number(city.longitude ?? city.lon ?? city.lng ?? city.location?.longitude),
       timezone: city.timezone || city.time_zone || CONFIG.DEFAULT_TIMEZONE
     };
   }
 
   async function selectCity(rawCity) {
     const city = normalizeCity(rawCity);
-
-    if (
-      !Number.isFinite(city.latitude) ||
-      !Number.isFinite(city.longitude)
-    ) {
+    if (!validCity(city)) {
       showToast(t("connectionError"));
       console.error("Invalid city coordinates:", rawCity);
-      return;
+      return false;
     }
 
+    // Cancel any in-flight prayer request before switching city.
+    prayerRequestId += 1;
     selectedCity = city;
-
+    prayerData = null;
+    lastCountdownValue = "";
     prayerSettings.timezone = city.timezone;
+    prayerSettings.madhhab = "hanafi";
 
     saveJSON(STORAGE.city, selectedCity);
-    saveJSON(STORAGE.settings, prayerSettings);
-
+    savePrayerSettings();
     closeCityModal();
-
     updateCityName();
     updateCityDates();
 
+    restorePrayerCache();
     await loadPrayerTimes();
+    return true;
   }
 
   function updateCityName() {
-    const cityName = selectedCity
+    const name = selectedCity
       ? [selectedCity.name, selectedCity.country].filter(Boolean).join(", ")
       : t("chooseCity");
 
-    const selectors = [
-      "#userLocation",
-      "#selectedCity",
-      "[data-selected-city]"
-    ];
-
-    selectors.forEach(selector => {
+    ["#userLocation", "#selectedCity", "[data-selected-city]"].forEach(selector => {
       document.querySelectorAll(selector).forEach(element => {
-        element.textContent = cityName;
+        element.textContent = name;
       });
     });
   }
 
-  /* =========================
-     10. DATE AND TIME
-  ========================= */
-
-  function getCityDate() {
-    try {
-      return new Date(
-        new Date().toLocaleString("en-US", {
-          timeZone: getTimezone()
-        })
-      );
-    } catch {
-      return new Date();
-    }
-  }
-
-  function updateCityDates() {
-    const now = getCityDate();
-
-    const gregorian = new Intl.DateTimeFormat(
-      language === "ru" ? "ru-RU" :
-      language === "uz-Cyrl" ? "uz-UZ" : "uz-UZ",
-      {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: getTimezone()
-      }
-    ).format(new Date());
-
-    const gregorianElement = document.getElementById("gregorianDate");
-
-    if (gregorianElement) {
-      gregorianElement.textContent = gregorian;
-    }
-
-    const cityClock = document.getElementById("cityClock");
-
-    if (cityClock) {
-      cityClock.textContent =
-        `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    }
-
-    if (prayerData?.hijri) {
-      const hijriElement = document.getElementById("hijriDate");
-
-      if (hijriElement) {
-        const hijri = prayerData.hijri;
-
-        hijriElement.textContent =
-          hijri.date ||
-          [hijri.day, hijri.month?.en || hijri.month, hijri.year]
-            .filter(Boolean)
-            .join(" ");
-      }
-    }
-  }
-
-  /* =========================
-     11. PRAYER SETTINGS
-  ========================= */
+  /* -------------------------
+     Prayer settings (Hanafi fixed)
+  ------------------------- */
 
   function getPrayerSettings() {
     return {
@@ -761,16 +590,16 @@
 
   function openPrayerSettings() {
     const current = getPrayerSettings();
-
     const answer = window.prompt(
       language === "ru"
         ? "Введите номер метода расчёта (по умолчанию 3):"
-        : "Hisoblash usuli raqamini kiriting (standart 3):",
+        : language === "uz-Cyrl"
+          ? "Ҳисоблаш усули рақамини киритинг (стандарт 3):"
+          : "Hisoblash usuli raqamini kiriting (standart 3):",
       String(current.method)
     );
 
     if (answer === null) return;
-
     const method = Number(answer);
 
     if (!Number.isInteger(method) || method < 0 || method > 99) {
@@ -779,21 +608,28 @@
     }
 
     prayerSettings.method = method;
-    prayerSettings.madhhab = "hanafi";
-
     savePrayerSettings();
+    prayerData = null;
     loadPrayerTimes();
   }
 
-  /* =========================
-     12. LOAD PRAYER TIMES
-  ========================= */
+  /* -------------------------
+     Load prayer times safely
+  ------------------------- */
 
   async function loadPrayerTimes() {
     if (!selectedCity) {
       updateCityName();
-      return;
+      return false;
     }
+    if (!validCity(selectedCity)) {
+      showToast(t("connectionError"));
+      console.error("Saved city coordinates are invalid:", selectedCity);
+      return false;
+    }
+
+    const requestId = ++prayerRequestId;
+    const cacheAvailable = restorePrayerCache();
 
     const params = new URLSearchParams({
       latitude: String(selectedCity.latitude),
@@ -804,44 +640,55 @@
     });
 
     try {
-      const data = await apiRequest(
-        `/api/prayer/today?${params.toString()}`
-      );
+      const data = await apiRequest(`/api/prayer/today?${params.toString()}`);
+      if (requestId !== prayerRequestId) return false;
 
-      if (data.success === false) {
-        throw new Error(data.message || "Prayer API error");
+      if (data?.success === false) throw new Error(data.message || "Prayer API error");
+
+      const timings = data?.timings || data?.data?.timings;
+      if (!timings || typeof timings !== "object") {
+        throw new Error("Prayer API response has no timings object");
       }
 
-      prayerData = data;
+      prayerData = {
+        ...data,
+        timings,
+        hijri: data.hijri || data.data?.hijri || null,
+        cached: false
+      };
 
+      savePrayerCache(prayerData);
+      lastPrayerDateKey = getCityDateKey();
       renderPrayerTimes();
       renderPrayerNames();
       updateCityDates();
       updateNextPrayer();
 
-      document.dispatchEvent(
-        new CustomEvent("taqvo:prayer-loaded", {
-          detail: data
-        })
-      );
-
+      document.dispatchEvent(new CustomEvent("taqvo:prayer-loaded", {
+        detail: prayerData
+      }));
+      return true;
     } catch (error) {
+      if (requestId !== prayerRequestId) return false;
       console.error("Prayer loading error:", error);
-      showToast(t("connectionError"));
+
+      if (cacheAvailable || restorePrayerCache()) {
+        showToast(t("offlineCache"));
+      } else {
+        showToast(t("connectionError"));
+      }
+      return false;
     }
   }
 
-  /* =========================
-     13. RENDER PRAYER TIMES
-  ========================= */
+  /* -------------------------
+     Render prayer times and names
+  ------------------------- */
 
   function normalizePrayerTime(value) {
     if (!value) return "--:--";
-
     const match = String(value).match(/(\d{1,2}):(\d{2})/);
-
     if (!match) return "--:--";
-
     return `${pad(Number(match[1]))}:${match[2]}`;
   }
 
@@ -849,87 +696,61 @@
     if (!prayerData?.timings) return;
 
     PRAYERS.forEach(prayer => {
-      const time = normalizePrayerTime(
-        prayerData.timings[prayer.key]
-      );
-
-      const card = document.querySelector(
-        `.prayer-item[data-prayer="${prayer.id}"]`
-      );
-
+      const time = normalizePrayerTime(prayerData.timings[prayer.key]);
+      const card = document.querySelector(`.prayer-item[data-prayer="${prayer.id}"]`);
       if (!card) return;
 
-      const timeElement =
-        card.querySelector(".prayer-time") ||
+      const timeElement = card.querySelector(".prayer-time") ||
         card.querySelector("[data-prayer-time]") ||
         card.querySelector(".time");
 
       if (timeElement) {
         timeElement.textContent = time;
       } else {
-        const existing = card.querySelector("span:last-child");
-
-        if (existing) existing.textContent = time;
+        const fallback = card.querySelector("span:last-child");
+        if (fallback) fallback.textContent = time;
       }
-
       card.dataset.time = time;
     });
   }
 
   function renderPrayerNames() {
     PRAYERS.forEach(prayer => {
-      const card = document.querySelector(
-        `.prayer-item[data-prayer="${prayer.id}"]`
-      );
-
+      const card = document.querySelector(`.prayer-item[data-prayer="${prayer.id}"]`);
       if (!card) return;
 
-      const nameElement =
-        card.querySelector(".prayer-name") ||
+      const nameElement = card.querySelector(".prayer-name") ||
         card.querySelector("[data-prayer-name]");
 
-      if (nameElement) {
-        nameElement.textContent =
-          prayer.names[language] || prayer.names.uz;
-      }
+      if (nameElement) nameElement.textContent = prayer.names[language] || prayer.names.uz;
     });
   }
 
-  /* =========================
-     14. NEXT PRAYER COUNTDOWN
-  ========================= */
+  /* -------------------------
+     Next prayer countdown
+  ------------------------- */
 
   function parsePrayerDate(time, baseDate) {
     const normalized = normalizePrayerTime(time);
-
     if (normalized === "--:--") return null;
-
     const [hours, minutes] = normalized.split(":").map(Number);
-
-    const date = new Date(baseDate);
-
-    date.setHours(hours, minutes, 0, 0);
-
-    return date;
+    const result = new Date(baseDate);
+    result.setHours(hours, minutes, 0, 0);
+    return result;
   }
 
   function updateNextPrayer() {
     if (!prayerData?.timings) return;
 
     const now = getCityDate();
-
     const schedule = PRAYERS.map(prayer => ({
       ...prayer,
-      time: normalizePrayerTime(
-        prayerData.timings[prayer.key]
-      )
+      time: normalizePrayerTime(prayerData.timings[prayer.key])
     }));
 
     let next = null;
-
     for (const prayer of schedule) {
       const date = parsePrayerDate(prayer.time, now);
-
       if (date && date > now) {
         next = { ...prayer, date };
         break;
@@ -939,11 +760,9 @@
     if (!next) {
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const first = schedule[0];
-      const date = parsePrayerDate(first.time, tomorrow);
-
-      if (date) next = { ...first, date };
+      const firstPrayer = schedule[0];
+      const date = parsePrayerDate(firstPrayer.time, tomorrow);
+      if (date) next = { ...firstPrayer, date };
     }
 
     document.querySelectorAll(".prayer-item").forEach(card => {
@@ -952,44 +771,31 @@
 
     if (!next) return;
 
-    const activeCard = document.querySelector(
-      `.prayer-item[data-prayer="${next.id}"]`
-    );
-
-    if (activeCard) {
-      activeCard.classList.add("active", "next-prayer");
-    }
+    const activeCard = document.querySelector(`.prayer-item[data-prayer="${next.id}"]`);
+    activeCard?.classList.add("active", "next-prayer");
 
     const nameElement = document.getElementById("nextPrayerName");
     const countdownElement = document.getElementById("nextPrayerCountdown");
 
-    if (nameElement) {
-      nameElement.textContent =
-        next.names[language] || next.names.uz;
-    }
+    if (nameElement) nameElement.textContent = next.names[language] || next.names.uz;
 
     if (countdownElement) {
-      const difference = Math.max(
-        0,
-        Math.floor((next.date - now) / 1000)
-      );
-
-      const hours = Math.floor(difference / 3600);
-      const minutes = Math.floor((difference % 3600) / 60);
-      const seconds = difference % 60;
-
+      const secondsLeft = Math.max(0, Math.floor((next.date - now) / 1000));
+      const hours = Math.floor(secondsLeft / 3600);
+      const minutes = Math.floor((secondsLeft % 3600) / 60);
+      const seconds = secondsLeft % 60;
       const value = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 
-      if (lastCountdownValue !== value) {
+      if (value !== lastCountdownValue) {
         countdownElement.textContent = value;
         lastCountdownValue = value;
       }
     }
   }
 
-  /* =========================
-     15. CITY AND PRAYER EVENTS
-  ========================= */
+  /* -------------------------
+     Bind city/prayer UI events
+  ------------------------- */
 
   function initCityAndPrayer() {
     createCityModal();
@@ -998,17 +804,13 @@
       const cityButton = event.target.closest(
         '[data-action="select-city"], #userLocation, #selectedCity'
       );
-
       if (cityButton) {
         event.preventDefault();
         openCityModal();
         return;
       }
 
-      const settingsButton = event.target.closest(
-        '[data-action="prayer-settings"]'
-      );
-
+      const settingsButton = event.target.closest('[data-action="prayer-settings"]');
       if (settingsButton) {
         event.preventDefault();
         openPrayerSettings();
@@ -1018,36 +820,34 @@
     updateCityName();
 
     if (selectedCity) {
-      loadPrayerTimes();
+      restorePrayerCache(); // instant display from this device
+      loadPrayerTimes();    // refresh from server in background
     }
 
     if (!countdownTimer) {
       countdownTimer = setInterval(() => {
         updateNextPrayer();
         updateCityDates();
+
+        // At city-local midnight, today's cache key changes; fetch new timings once.
+        const todayKey = getCityDateKey();
+        if (selectedCity && todayKey !== lastPrayerDateKey) {
+          lastPrayerDateKey = todayKey;
+          loadPrayerTimes();
+        }
       }, 1000);
     }
   }
 
-  /* =========================
-     16. GLOBAL APP API
-  ========================= */
+  /* -------------------------
+     Public app API
+  ------------------------- */
 
   window.TAQVO = {
-    version: "2.0.0",
-
-    get language() {
-      return language;
-    },
-
-    get city() {
-      return selectedCity;
-    },
-
-    get prayerData() {
-      return prayerData;
-    },
-
+    version: "2.1.0",
+    get language() { return language; },
+    get city() { return selectedCity; },
+    get prayerData() { return prayerData; },
     t,
     showToast,
     changeLanguage,
@@ -1057,17 +857,14 @@
     loadPrayerTimes,
     openPrayerSettings,
     updateNextPrayer,
-
     getPrayerSettings,
-
-    setCity(city) {
-      return selectCity(city);
-    }
+    setCity(city) { return selectCity(city); },
+    refreshPrayerTimes() { return loadPrayerTimes(); }
   };
 
-  /* =========================
-     17. INITIALIZATION
-  ========================= */
+  /* -------------------------
+     Start application
+  ------------------------- */
 
   function init() {
     initTelegram();
@@ -1075,17 +872,14 @@
     initNavigation();
     initCityAndPrayer();
 
-    document.dispatchEvent(
-      new CustomEvent("taqvo:ready")
-    );
+    document.dispatchEvent(new CustomEvent("taqvo:ready"));
 
     console.log(
       "%c TAQVO PRO MAX ",
       "background:#111;color:#ffd700;font-weight:bold;padding:8px;"
     );
-
     console.log("TAQVO application initialized.");
-    console.log("Prayer madhhab: Hanafi (fixed).");
+    console.log("Prayer calculation: Hanafi (fixed; no madhhab selector).");
   }
 
   if (document.readyState === "loading") {
@@ -1093,5 +887,4 @@
   } else {
     init();
   }
-
 })();
