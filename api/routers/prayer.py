@@ -19,8 +19,10 @@ ALADHAN_URL = "https://api.aladhan.com/v1"
 
 REQUEST_TIMEOUT = 15.0
 CACHE_SECONDS = 300
+MAX_CACHE_ITEMS = 1000
 
-_prayer_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+DEFAULT_METHOD = 3
+DEFAULT_MADHHAB = "hanafi"
 
 Madhhab = Literal["hanafi", "maliki", "shafii", "hanbali"]
 
@@ -32,11 +34,47 @@ MADHHAB_NAMES = {
 }
 
 
+_prayer_cache: dict[
+    str,
+    tuple[float, dict[str, Any]],
+] = {}
+
+
 def _clean_time(value: str | None) -> str | None:
+    """Normalize a prayer time returned by AlAdhan."""
+
     if not value:
         return None
 
     return value.split(" ")[0].strip()
+
+
+def _get_asr_school(madhhab: Madhhab) -> int:
+    """Return the AlAdhan Asr calculation school."""
+
+    return 1 if madhhab == "hanafi" else 0
+
+
+def _clean_cache() -> None:
+    """Remove expired entries and limit cache size."""
+
+    now = monotonic()
+
+    expired_keys = [
+        key
+        for key, (created_at, _) in _prayer_cache.items()
+        if now - created_at >= CACHE_SECONDS
+    ]
+
+    for key in expired_keys:
+        _prayer_cache.pop(key, None)
+
+    while len(_prayer_cache) >= MAX_CACHE_ITEMS:
+        oldest_key = min(
+            _prayer_cache,
+            key=lambda key: _prayer_cache[key][0],
+        )
+        _prayer_cache.pop(oldest_key, None)
 
 
 @router.get("/cities")
@@ -45,6 +83,7 @@ async def search_cities(
     count: int = Query(default=10, ge=1, le=20),
     language: str = Query(default="en", min_length=2, max_length=5),
 ) -> dict[str, Any]:
+    """Search worldwide cities using Open-Meteo geocoding."""
 
     query = q.strip()
 
@@ -98,6 +137,11 @@ async def search_cities(
         ):
             continue
 
+        try:
+            ZoneInfo(city_timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            continue
+
         cities.append({
             "id": item.get("id"),
             "name": item.get("name"),
@@ -125,16 +169,10 @@ async def get_today_prayer_times(
         min_length=1,
         max_length=64,
     ),
-    method: int = Query(default=3),
-    madhhab: Madhhab = Query(default="hanafi"),
-    school: int | None = Query(default=None, ge=0, le=1),
+    method: int = Query(default=DEFAULT_METHOD, ge=0, le=99),
+    madhhab: Madhhab = Query(default=DEFAULT_MADHHAB),
 ) -> dict[str, Any]:
-    """
-    Get today's prayer times for a worldwide location.
-
-    Hanafi uses the Hanafi Asr calculation.
-    Maliki, Shafi'i and Hanbali use the standard Asr calculation.
-    """
+    """Get today's prayer times for a worldwide location."""
 
     if method not in {*range(0, 24), 99}:
         raise HTTPException(
@@ -150,25 +188,15 @@ async def get_today_prayer_times(
             detail="Vaqt zonasi noto'g'ri yoki topilmadi.",
         ) from exc
 
-    # AlAdhan supports two Asr calculation schools:
-    # 1 = Hanafi, 0 = standard.
-    # Keep the old 'school' parameter for compatibility.
-    if school is not None:
-        asr_school = school
-        selected_madhhab = (
-            "hanafi" if school == 1 else madhhab
-        )
-    else:
-        selected_madhhab = madhhab
-        asr_school = 1 if madhhab == "hanafi" else 0
+    asr_school = _get_asr_school(madhhab)
 
     local_date = datetime.now(city_timezone).date()
     date_string = local_date.strftime("%d-%m-%Y")
 
     cache_key = (
         f"{latitude:.5f}:{longitude:.5f}:"
-        f"{timezone_name}:{method}:{asr_school}:"
-        f"{selected_madhhab}:{date_string}"
+        f"{timezone_name}:{method}:"
+        f"{madhhab}:{date_string}"
     )
 
     cached = _prayer_cache.get(cache_key)
@@ -209,14 +237,27 @@ async def get_today_prayer_times(
             detail="Namoz vaqtlari xizmatida xatolik yuz berdi.",
         ) from exc
 
-    if payload.get("code") != 200:
+    if not isinstance(payload, dict) or payload.get("code") != 200:
         raise HTTPException(
             status_code=502,
             detail="Namoz vaqtlari API to'g'ri ma'lumot qaytarmadi.",
         )
 
-    data = payload.get("data", {})
-    raw_timings = data.get("timings", {})
+    data = payload.get("data")
+
+    if not isinstance(data, dict):
+        raise HTTPException(
+            status_code=502,
+            detail="Namoz vaqtlari ma'lumotlari noto'g'ri.",
+        )
+
+    raw_timings = data.get("timings")
+
+    if not isinstance(raw_timings, dict):
+        raise HTTPException(
+            status_code=502,
+            detail="Namoz vaqtlari topilmadi.",
+        )
 
     required_times = {
         "fajr": raw_timings.get("Fajr"),
@@ -232,6 +273,26 @@ async def get_today_prayer_times(
             detail="Namoz vaqtlarining ayrimlari mavjud emas.",
         )
 
+    timings = {
+        key: _clean_time(value)
+        for key, value in required_times.items()
+    }
+
+    if not all(timings.values()):
+        raise HTTPException(
+            status_code=502,
+            detail="Namoz vaqtlarini qayta ishlashda xatolik.",
+        )
+
+    hijri_data = data.get("date", {})
+    meta_data = data.get("meta", {})
+
+    if not isinstance(hijri_data, dict):
+        hijri_data = {}
+
+    if not isinstance(meta_data, dict):
+        meta_data = {}
+
     result = {
         "success": True,
         "date": local_date.isoformat(),
@@ -240,18 +301,17 @@ async def get_today_prayer_times(
             "latitude": latitude,
             "longitude": longitude,
         },
-        "timings": {
-            key: _clean_time(value)
-            for key, value in required_times.items()
-        },
-        "sunrise": _clean_time(raw_timings.get("Sunrise")),
-        "hijri": data.get("date", {}).get("hijri", {}),
+        "timings": timings,
+        "sunrise": _clean_time(
+            raw_timings.get("Sunrise")
+        ),
+        "hijri": hijri_data.get("hijri", {}),
         "meta": {
-            "calculation_method": data.get(
-                "meta", {}
-            ).get("method", {}),
-            "madhhab": selected_madhhab,
-            "madhhab_name": MADHHAB_NAMES[selected_madhhab],
+            "calculation_method": meta_data.get(
+                "method", {}
+            ),
+            "madhhab": madhhab,
+            "madhhab_name": MADHHAB_NAMES[madhhab],
             "asr_school": (
                 "hanafi" if asr_school == 1 else "standard"
             ),
@@ -262,6 +322,11 @@ async def get_today_prayer_times(
         },
     }
 
-    _prayer_cache[cache_key] = (monotonic(), result)
+    _clean_cache()
+
+    _prayer_cache[cache_key] = (
+        monotonic(),
+        result,
+    )
 
     return result
