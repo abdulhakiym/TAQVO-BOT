@@ -1,16 +1,45 @@
 
+# Python 3.12+
+# TAQVO PRO MAX dependencies
+
+# Telegram Bot
 aiogram>=3.20,<4.0
+
+# Backend API
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.34,<1.0
+
+# Database
+sqlalchemy[asyncio]>=2.0,<3.0
+asyncpg>=0.30,<1.0
+alembic>=1.14,<2.0
+
+# Configuration and validation
 pydantic>=2.10,<3.0
 pydantic-settings>=2.7,<3.0
 python-dotenv>=1.0,<2.0
-SQLAlchemy[asyncio]>=2.0,<3.0
-asyncpg>=0.30,<1.0
-alembic>=1.14,<2.0
+
+# HTTP and external APIs
 httpx>=0.28,<1.0
+
+# Scheduling and timezone
+apscheduler>=3.10,<4.0
 tzdata>=2025.1
 
-pytest>=8.0,<9.0
+# Authentication and security
+cryptography>=44.0
+PyJWT>=2.10,<3.0
+
+# Search and knowledge base
+pgvector>=0.3,<1.0
+
+# Logging
+structlog>=25.1,<26.0
+
+# Testing
+pytest>=8.3,<9.0
 pytest-asyncio>=0.25,<1.0
+pytest-cov>=6.0,<7.0
+
+# Code quality
 ruff>=0.9,<1.0
