@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -27,7 +26,6 @@ async def get_user_by_telegram_id(
                 User.telegram_id == telegram_id
             )
         )
-
         return result.scalar_one_or_none()
 
 
@@ -35,29 +33,25 @@ async def register_or_update_user(
     telegram_id: int,
     first_name: str,
     username: str | None = None,
-    language: str = "uz",
+    language: str | None = None,
 ) -> User:
-    """
-    Register a Telegram user or update their profile.
-
-    Existing city, country, and timezone preferences
-    are preserved when the user returns.
-    """
+    """Register a new user or update an existing profile."""
 
     if telegram_id <= 0:
         raise ValueError("Telegram ID noto'g'ri.")
 
     first_name = first_name.strip() or "Foydalanuvchi"
-
-    if len(first_name) > 128:
-        first_name = first_name[:128]
+    first_name = first_name[:128]
 
     if username:
         username = username.lstrip("@")[:64] or None
 
-    language = language.strip()[:10] or "uz"
+    if language is not None:
+        language = language.strip()[:10]
 
-    settings = get_settings()
+        if not language:
+            language = "uz"
+
     now = datetime.now(timezone.utc)
 
     try:
@@ -71,11 +65,13 @@ async def register_or_update_user(
             user = result.scalar_one_or_none()
 
             if user is None:
+                settings = get_settings()
+
                 user = User(
                     telegram_id=telegram_id,
                     first_name=first_name,
                     username=username,
-                    language=language,
+                    language=language or "uz",
                     timezone=settings.default_timezone,
                     is_active=True,
                     last_seen_at=now,
@@ -85,9 +81,11 @@ async def register_or_update_user(
             else:
                 user.first_name = first_name
                 user.username = username
-                user.language = language
                 user.last_seen_at = now
                 user.is_active = True
+
+                if language is not None:
+                    user.language = language
 
             await session.commit()
             await session.refresh(user)
@@ -96,7 +94,7 @@ async def register_or_update_user(
 
     except SQLAlchemyError:
         logger.exception(
-            "Failed to register Telegram user: %s",
+            "User registration failed: %s",
             telegram_id,
         )
         raise
@@ -110,7 +108,7 @@ async def update_user_preferences(
     city: str | None = None,
     timezone_name: str | None = None,
 ) -> User | None:
-    """Update a user's language, city, country and timezone."""
+    """Update user language, city and timezone preferences."""
 
     if language is not None:
         language = language.strip()
@@ -119,15 +117,15 @@ async def update_user_preferences(
             raise ValueError("Til kodi noto'g'ri.")
 
     if country is not None:
-        country = country.strip() or None
+        country = country.strip()
 
-        if country and len(country) > 100:
+        if len(country) > 100:
             raise ValueError("Davlat nomi juda uzun.")
 
     if city is not None:
-        city = city.strip() or None
+        city = city.strip()
 
-        if city and len(city) > 100:
+        if len(city) > 100:
             raise ValueError("Shahar nomi juda uzun.")
 
     if timezone_name is not None:
@@ -155,10 +153,10 @@ async def update_user_preferences(
                 user.language = language
 
             if country is not None:
-                user.country = country
+                user.country = country or None
 
             if city is not None:
-                user.city = city
+                user.city = city or None
 
             if timezone_name is not None:
                 user.timezone = timezone_name
@@ -170,7 +168,7 @@ async def update_user_preferences(
 
     except SQLAlchemyError:
         logger.exception(
-            "Failed to update user preferences: %s",
+            "User preferences update failed: %s",
             telegram_id,
         )
         raise
@@ -197,12 +195,11 @@ async def deactivate_user(
             user.is_active = False
 
             await session.commit()
-
             return True
 
     except SQLAlchemyError:
         logger.exception(
-            "Failed to deactivate user: %s",
+            "User deactivation failed: %s",
             telegram_id,
         )
         raise
