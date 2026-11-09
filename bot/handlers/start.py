@@ -10,6 +10,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
+    User as TelegramUser,
     WebAppInfo,
 )
 from sqlalchemy.exc import SQLAlchemyError
@@ -54,6 +55,7 @@ def mini_app_keyboard() -> InlineKeyboardMarkup | None:
     webapp_url = settings.webapp_url.strip()
 
     if not webapp_url:
+        logger.warning("WEBAPP_URL sozlanmagan.")
         return None
 
     if not webapp_url.startswith("https://"):
@@ -77,8 +79,6 @@ async def check_user_subscription(
     user_id: int,
 ) -> bool | None:
     """
-    Check channel membership.
-
     True: subscribed.
     False: not subscribed.
     None: Telegram API verification failed.
@@ -115,18 +115,12 @@ async def check_user_subscription(
 
 
 async def save_telegram_user(
-    message: Message,
+    telegram_user: TelegramUser,
 ) -> bool:
-    """Save or update the Telegram user in PostgreSQL."""
-
-    telegram_user = message.from_user
-
-    if telegram_user is None:
-        return False
+    """Save the actual Telegram user in PostgreSQL."""
 
     language = telegram_user.language_code
 
-    # Only use language codes supported by the project.
     if language not in {"uz", "uz-Cyrl", "ru"}:
         language = None
 
@@ -158,12 +152,14 @@ async def send_access_message(
 ) -> None:
     """Check subscription, save the user and show Mini App access."""
 
-    if not message.from_user:
+    telegram_user = message.from_user
+
+    if telegram_user is None:
         return
 
     is_subscribed = await check_user_subscription(
         bot=bot,
-        user_id=message.from_user.id,
+        user_id=telegram_user.id,
     )
 
     if is_subscribed is None:
@@ -183,7 +179,7 @@ async def send_access_message(
         )
         return
 
-    saved = await save_telegram_user(message)
+    saved = await save_telegram_user(telegram_user)
 
     if not saved:
         await message.answer(
@@ -233,9 +229,7 @@ async def subscription_callback(
 ) -> None:
     """Handle the subscription verification button."""
 
-    if not callback.from_user:
-        await callback.answer()
-        return
+    telegram_user = callback.from_user
 
     if not isinstance(callback.message, Message):
         await callback.answer(
@@ -246,7 +240,7 @@ async def subscription_callback(
 
     is_subscribed = await check_user_subscription(
         bot=bot,
-        user_id=callback.from_user.id,
+        user_id=telegram_user.id,
     )
 
     if is_subscribed is None:
@@ -263,17 +257,16 @@ async def subscription_callback(
         )
         return
 
-    await callback.answer("Obuna tasdiqlandi!")
-
-    saved = await save_telegram_user(callback.message)
+    saved = await save_telegram_user(telegram_user)
 
     if not saved:
-        await callback.message.answer(
-            "Obunangiz tasdiqlandi, ammo ma'lumotlarni "
-            "bazaga saqlashda xatolik yuz berdi.\n"
-            "Iltimos, keyinroq /start yuboring."
+        await callback.answer(
+            "Ma'lumotlarni saqlashda xatolik yuz berdi.",
+            show_alert=True,
         )
         return
+
+    await callback.answer("Obuna tasdiqlandi!")
 
     keyboard = mini_app_keyboard()
 
